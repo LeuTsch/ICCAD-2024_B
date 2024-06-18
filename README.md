@@ -10,3 +10,6 @@ about the data structure
 # solver.h
 including all functions waiting for implement.
 you are suggest to add more interface in it, if needed.
+
+# main.cpp
+where the main function is, also the target of makefile.
