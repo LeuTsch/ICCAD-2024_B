@@ -43,7 +43,7 @@ namespace Solver
         vector<Inst::FF_Q> _FF_Q_arr;
         vector<string> _Name_to_ID;
         vector<vector<size_t>> _NetList;
-        vector<PlacementRow> _PlaceRow;
+        vector<struct PlacementRow> _PlaceRow;
         vector<string> _ClkList;
         vector<vector<vector<size_t>>> _Gate_in_Bin; // inside is the position in _Gate_arr, rather than ID of gate
         vector<vector<vector<size_t>>> _FF_in_Bin;   // only record FF_D

@@ -109,7 +109,6 @@ namespace Inst
     private:
         string _Name_now;
         string _Name_origin;
-        vector<size_t> NetID_related;
         double _Slack_origin;
         size_t _clkID;
         pair<double, double> _position_origin;

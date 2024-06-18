@@ -299,9 +299,9 @@ void Solver::Solver::initSolver()
         int Ry = int(_PlaceRow[i].y + _PlaceRow[i].siteHight);
         int Rx_index = (Rx - (Rx % _ptr_Parser->_binWidth)) / _ptr_Parser->_binWidth;
         int Ry_index = (Ry - (Ry % _ptr_Parser->_binWidth)) / _ptr_Parser->_binWidth;
-        for (size_t x = Lx_index; x <= Rx_index; x++)
+        for (int x = Lx_index; x <= Rx_index; x++)
         {
-            for (size_t y = Ly_index; y <= Ry_index; y++)
+            for (int y = Ly_index; y <= Ry_index; y++)
             {
                 _PlaceRow_in_Bin[x][y].push_back(i);
             }
@@ -328,11 +328,13 @@ bool Solver::Solver::mbffCluster() // can add parameter to implement the Window-
     /*
     TODO: group the possible Multibit FF and use prePlace() function to place it and release slack
     */
+    return true;
 }
 
 bool Solver::Solver::prePlace(vector<size_t> ff_group, size_t placementRowID, pair<double, double> pos)
 {
     // let me know what function do you want it to be
+    return true;
 }
 
 void Solver::Solver::findFanin(const FF_D_ID &id)
@@ -530,4 +532,5 @@ size_t Solver::Solver::name2ID(string &name) const
             return i;
         }
     }
+    return -1;
 }

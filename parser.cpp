@@ -46,7 +46,7 @@ void Parse::Parser::readInput(string file)
         }
         else if (keyw == "NumInput")
         {
-            int count;
+            size_t count;
             input >> count;
             _inputName.reserve(count);
             _inputCrdnate.reserve(count);
@@ -63,11 +63,11 @@ void Parse::Parser::readInput(string file)
         }
         else if (keyw == "NumOutput")
         {
-            int count;
+            size_t count;
             input >> count;
             _outputName.reserve(count);
             _outputCrdnate.reserve(count);
-            for (int i = 0; i < count; i++)
+            for (size_t i = 0; i < count; i++)
             {
                 input >> keyw;
                 input >> keyw;
@@ -147,7 +147,7 @@ void Parse::Parser::readInput(string file)
                 input >> keyw;
                 input >> keyw;
                 _netName.push_back(keyw);
-                int n;
+                size_t n;
                 input >> n;
                 vector<string> netPin;
                 netPin.reserve(n);
