@@ -1,0 +1,2 @@
+# ICCAD-2024_B
+ICCAD 2024 problem B
