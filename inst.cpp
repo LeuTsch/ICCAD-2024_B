@@ -50,6 +50,7 @@ Inst::FF_D::FF_D(string name, const pair<double, double> pos) : _Name_origin(nam
     _Name_now = "NEW" + name;
     grouped = false;
     _position_origin = pos;
+    slack = 0;
 }
 Inst::FF_D::~FF_D()
 {
@@ -65,6 +66,7 @@ Inst::FF_Q::FF_Q(string name, const pair<double, double> pos) : _Name_origin(nam
     _Name_now = "NEW" + name;
     grouped = false;
     _position_origin = pos;
+    slack = 0;
 }
 
 Inst::FF_Q::~FF_Q()

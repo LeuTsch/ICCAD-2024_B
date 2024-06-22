@@ -337,6 +337,47 @@ bool Solver::Solver::prePlace(vector<size_t> ff_group, size_t placementRowID, pa
     return true;
 }
 
+void Solver::Solver::slackDistribute(const double k)
+{
+    // k shold be a number between 0 and 1;
+    for (size_t i = 0; i < _FF_D_arr.size(); i++)
+    {
+        bool isNeg = false;
+        double oriSlack = _FF_D_arr[i].getOriSlack();
+        if (oriSlack < 0)
+        {
+            isNeg = true;
+        }
+        // if slack is negative, do not spread it
+        if (isNeg)
+        {
+            _FF_D_arr[i].slack = oriSlack; 
+        }
+        else
+        {
+            _FF_D_arr[i].slack = k * oriSlack; 
+            for(const auto& ffq_ID : _FF_D_arr[i].faninCone)
+            {
+                size_t id = ffq_ID - _FF_Q_OFFSET;
+                if (_FF_Q_arr[id].slack == 0)
+                {
+                    _FF_Q_arr[id].slack = k * oriSlack; 
+                }
+                else
+                {
+                    if (_FF_Q_arr[id].slack > k * oriSlack)
+                    {
+                        _FF_Q_arr[id].slack = k * oriSlack;
+                    }
+                    
+                }
+            }
+        }
+        
+    }
+    
+}
+
 void Solver::Solver::findFanin(const FF_D_ID &id)
 {
     /*

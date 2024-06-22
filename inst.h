@@ -83,6 +83,7 @@ namespace Inst
         {
             grouped = false;
             faninCone.clear();
+            slack = 0;
         }
         FF_D(string, const pair<double, double>);
         ~FF_D();
@@ -121,6 +122,7 @@ namespace Inst
         {
             fanoutCone.clear();
             grouped = false;
+            slack = 0;
         }
         FF_Q(string, const pair<double, double>);
         ~FF_Q();
