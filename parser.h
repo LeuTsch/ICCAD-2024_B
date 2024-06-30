@@ -13,6 +13,35 @@ using std::vector;
 
 namespace Parse
 {
+    struct FLIPFLOP
+    {
+        string Name;
+        int Bit;
+        double Width;
+        double Hight;
+        double Power;
+        double PinDelay;
+        vector<string> PinName;
+        vector<pair<coord, coord>> PinCrdnate;
+    };
+
+    struct INST
+    {
+        string Name;
+        string Type;
+        coord x;
+        coord y;
+    };
+
+    struct PLACEROW
+    {
+        double x;
+        double y;
+        double siteWidth;
+        double siteHight;
+        double totalNumOfSites;
+    };
+
     class Parser
     {
     public:
@@ -54,35 +83,6 @@ namespace Parse
         vector<struct PLACEROW> _placeRow;
         double _displaceDelay;
         vector<pair<string, double>> _timeSlack;
-    };
-
-    struct FLIPFLOP
-    {
-        string Name;
-        int Bit;
-        double Width;
-        double Hight;
-        double Power;
-        double PinDelay;
-        vector<string> PinName;
-        vector<pair<coord, coord>> PinCrdnate;
-    };
-
-    struct INST
-    {
-        string Name;
-        string Type;
-        coord x;
-        coord y;
-    };
-
-    struct PLACEROW
-    {
-        double x;
-        double y;
-        double siteWidth;
-        double siteHight;
-        double totalNumOfSites;
     };
 }
 #endif
