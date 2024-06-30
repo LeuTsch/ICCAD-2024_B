@@ -59,6 +59,23 @@ namespace Solver
         pair<double, double> findPinPosition(const size_t &) const;
         size_t name2ID(string &) const;
 
+        // auxilary function
+        vector<struct PlacementRow> getPlacementRow()const{return _PlaceRow;};
+        bool placementRowIsUniform(vector<struct PlacementRow>&) const;
+        size_t getPlaceRowNum() const{return _PlaceRow.size();};
+        double getSiteHeight() const {return _PlaceRow[0].siteHight;};
+        double getSiteWidth() const {return _PlaceRow[0].siteWidth;};
+        double getTotalSiteNum() const {return _PlaceRow[0].totalNumOfSites;};
+        double getLowerLeftX() const;
+        double getLowerLeftY() const;
+        pair<double, double> getGateLF(Inst::Gate*) const;
+        pair<double, double> getGateUR(Inst::Gate*) const;
+        pair<double, double> getFFPosition(Inst::FF_D*) const;
+        double getFFWidth(Inst::FF_D*) const;
+        double getFFHeight(Inst::FF_D*) const;
+        void setFFPosition(Inst::FF_D* , pair<double, double>&);
+        vector<size_t> getGroupMem(Inst::FF_D*) const;
+
         // the function should only be called in initialization
         void findFanin(const FF_D_ID &);
         void findFaninRecur(const FF_D_ID &, const Gate_ID &);

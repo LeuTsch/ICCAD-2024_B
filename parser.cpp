@@ -33,9 +33,9 @@ void Parse::Parser::readInput(string file)
         {
             input >> _gamma;
         }
-        else if (keyw == "Delta")
+        else if (keyw == "Lambda")
         {
-            input >> _delta;
+            input >> _lambda;
         }
         else if (keyw == "DieSize")
         {
@@ -200,7 +200,7 @@ void Parse::Parser::readInput(string file)
         }
         else if (keyw == "TimingSlack")
         {
-            pair<string, int> PinSlack;
+            pair<string, double> PinSlack;
             input >> keyw;
             PinSlack.first = keyw + "/";
             input >> keyw;

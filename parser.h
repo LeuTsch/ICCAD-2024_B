@@ -34,7 +34,7 @@ namespace Parse
         double _alpha;
         double _beta;
         double _gamma;
-        double _delta;
+        double _lambda;
         long _dieLx;
         long _dieLy;
         long _dieRx;
@@ -50,7 +50,7 @@ namespace Parse
         vector<vector<string>> _netPin;
         int _binWidth;
         int _binHeight;
-        int _binMaxUtil;
+        double _binMaxUtil;
         vector<struct PLACEROW> _placeRow;
         double _displaceDelay;
         vector<pair<string, double>> _timeSlack;
