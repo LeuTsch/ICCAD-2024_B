@@ -220,7 +220,7 @@ void Solver::Solver::initSolver()
         findFanout(ffq_id);
     }
 
-    // step4: update the slack for the pin
+    // step4: update the slack for the pin, and distribute slack
     for (const auto &N2Slack : _ptr_Parser->_timeSlack)
     {
         for (size_t i = 0; i < _FF_D_arr.size(); i++)
@@ -302,10 +302,10 @@ void Solver::Solver::initSolver()
         int Rx = int(_PlaceRow[i].x + _PlaceRow[i].siteWidth * _PlaceRow[i].totalNumOfSites);
         int Ry = int(_PlaceRow[i].y + _PlaceRow[i].siteHight);
         int Rx_index = (Rx - (Rx % _ptr_Parser->_binWidth)) / _ptr_Parser->_binWidth;
-        int Ry_index = (Ry - (Ry % _ptr_Parser->_binWidth)) / _ptr_Parser->_binWidth;
-        for (int x = Lx_index; x <= Rx_index; x++)
+        int Ry_index = (Ry - (Ry % _ptr_Parser->_binHeight)) / _ptr_Parser->_binHeight;
+        for (int x = Lx_index; x < Rx_index; x++)
         {
-            for (int y = Ly_index; y <= Ry_index; y++)
+            for (int y = Ly_index; y < Ry_index; y++)
             {
                 _PlaceRow_in_Bin[x][y].push_back(i);
             }

@@ -62,7 +62,7 @@ namespace Solver
         // function part
         bool mbffCluster();
         bool prePlace(vector<FF_D_ID>, size_t, pair<double, double>);
-        void slackDistribute(const double);
+        void slackDistribute(const double);  // should be called before mbff clustering 
         void legalize();
 
         // interface
