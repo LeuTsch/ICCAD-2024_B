@@ -320,6 +320,28 @@ void Solver::Solver::solve()
     */
 }
 
+void Solver::Solver::printOutput()
+{
+    /*
+    TODO: output
+    */
+}
+
+bool Solver::Solver::mbffCluster() // can add parameter to implement the Window-based sequence generation
+{
+    /*
+    TODO: group the possible Multibit FF and use prePlace() function to place it and release slack
+    */
+    return true;
+}
+
+vector<size_t> Solver::Solver::prePlace(vector<size_t> ff_group, pair<double, double> pos)
+{
+    // let me know what function do you want it to be
+    vector<size_t> a;
+    return a;
+}
+
 void Solver::Solver::legalize()
 {
     int _MaxIteration = 5;
@@ -885,28 +907,6 @@ bool Solver::Solver::placementRowIsUniform(vector<struct PlacementRow> &_PLR) co
     return true;
 }
 
-void Solver::Solver::printOutput()
-{
-    /*
-    TODO: output
-    */
-}
-
-bool Solver::Solver::mbffCluster() // can add parameter to implement the Window-based sequence generation
-{
-    /*
-    TODO: group the possible Multibit FF and use prePlace() function to place it and release slack
-    */
-    return true;
-}
-
-vector<size_t> Solver::Solver::prePlace(vector<size_t> ff_group, pair<double, double> pos)
-{
-    // let me know what function do you want it to be
-    vector<size_t> a;
-    return a;
-}
-
 void Solver::Solver::slackDistribute(const double k)
 {
     // k shold be a number between 0 and 1;
@@ -1141,4 +1141,44 @@ size_t Solver::Solver::name2ID(string &name) const
         }
     }
     return -1;
+}
+
+vector<pair<double, double>> Solver::Solver::getAdjacentPinPosition(size_t &id) const
+{
+    if (_ID_to_instance[id]->getType() == Inst::INST_FF_Q)
+    {
+        vector<pair<double, double>> pinPosition;
+        for (const auto &netID : _ID_to_instance[id]->getRelatedNet())
+        {
+            pinPosition.reserve(_NetList[netID].size());
+            for (const auto &relatePinID : _NetList[netID])
+            {
+                if (relatePinID != id)
+                {
+                    pinPosition.push_back(findPinPosition(relatePinID));
+                }
+            }
+        }
+        return pinPosition;
+    }
+    else if (_ID_to_instance[id]->getType() == Inst::INST_FF_D)
+    {
+        vector<pair<double, double>> pinPosition;
+        for (const auto &netID : _ID_to_instance[id]->getRelatedNet())
+        {
+            pinPosition.reserve(_NetList[netID].size());
+            for (const auto &relatePinID : _NetList[netID])
+            {
+                if (_ID_to_instance[relatePinID]->getType() != Inst::INST_FF_D)
+                {
+                    if (_ID_to_instance[relatePinID]->getName().find("OUTPUT") != std::string::npos) // ignore the output pin
+                    {
+                        continue;
+                    }
+                    pinPosition.push_back(findPinPosition(relatePinID));
+                }
+            }
+        }
+        return pinPosition;
+    }
 }

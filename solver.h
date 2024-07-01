@@ -62,12 +62,13 @@ namespace Solver
         // function part
         bool mbffCluster();
         vector<size_t> prePlace(vector<FF_D_ID>, pair<double, double>); // return the FF_D_ID be grouped
-        void slackDistribute(const double);  // should be called before mbff clustering 
+        void slackDistribute(const double);                             // should be called before mbff clustering
         void legalize();
 
         // interface
         pair<double, double> findPinPosition(const size_t &) const;
         size_t name2ID(string &) const;
+        vector<pair<double, double>> getAdjacentPinPosition(size_t &) const; // the input should be ID of Q, or D pin. Return the position of related pin
 
         // auxilary function
         vector<struct PlacementRow> getPlacementRow() const { return _PlaceRow; };
