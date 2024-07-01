@@ -900,10 +900,11 @@ bool Solver::Solver::mbffCluster() // can add parameter to implement the Window-
     return true;
 }
 
-bool Solver::Solver::prePlace(vector<size_t> ff_group, size_t placementRowID, pair<double, double> pos)
+vector<size_t> Solver::Solver::prePlace(vector<size_t> ff_group, pair<double, double> pos)
 {
     // let me know what function do you want it to be
-    return true;
+    vector<size_t> a;
+    return a;
 }
 
 void Solver::Solver::slackDistribute(const double k)
