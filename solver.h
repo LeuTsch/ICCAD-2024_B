@@ -37,6 +37,7 @@ namespace Solver
         void initSolver();
         void solve();
         void printOutput();
+        void test(); // do whatever test you want here
 
     private:
         // data part
