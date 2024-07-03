@@ -222,4 +222,5 @@ void Parse::Parser::readInput(string file)
         }
     }
     input.close();
+    cout << "read file successfully!" << endl;
 };

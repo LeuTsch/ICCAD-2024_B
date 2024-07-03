@@ -22,8 +22,10 @@ void Solver::Solver::initSolver()
     */
     assert(_ptr_Parser != nullptr);
 
+    std::cout << "start to initialize solver" << std::endl;
     // step1: realize the instance for PIO, ff, and Gate,and assign ID to them
     // realize PIO
+    std::cout << "step1: realize the instance for PIO, ff, and Gate,and assign ID" << std::endl;
     _PIO_arr.reserve(_ptr_Parser->_inputName.size() + _ptr_Parser->_outputName.size());
     for (size_t i = 0; i < _ptr_Parser->_inputName.size(); i++)
     {
@@ -138,6 +140,7 @@ void Solver::Solver::initSolver()
     for (size_t i = 0; i < _FF_D_arr.size(); i++)
     {
         Inst::Inst *ptr = &_FF_D_arr[i];
+        _FF_D_arr[i].grouped_member.push_back(_FF_D_OFFSET + i);
         _Name_to_ID.push_back(_FF_D_arr[i].getOriName());
         _ID_to_instance.push_back(ptr);
     }
@@ -151,6 +154,7 @@ void Solver::Solver::initSolver()
     }
 
     // step2: establish Net
+    std::cout << "step2: establish Net" << std::endl;
     for (const auto &netPinList : _ptr_Parser->_netPin)
     {
         bool isCLKNet = false;
@@ -211,6 +215,7 @@ void Solver::Solver::initSolver()
     }
 
     // step3: establish the fanin and fanout cone for the FF
+    std::cout << "step3: establish the fanin and fanout cone for the FF" << std::endl;
     for (size_t ffd_id = _FF_D_OFFSET; ffd_id < _FF_D_arr.size(); ffd_id++)
     {
         findFanin(ffd_id);
@@ -221,6 +226,7 @@ void Solver::Solver::initSolver()
     }
 
     // step4: update the slack for the pin, and distribute slack
+    std::cout << "step4: update the slack for the pin, and distribute slack" << std::endl;
     for (const auto &N2Slack : _ptr_Parser->_timeSlack)
     {
         for (size_t i = 0; i < _FF_D_arr.size(); i++)
@@ -234,6 +240,7 @@ void Solver::Solver::initSolver()
     }
 
     // step5: init the placement row
+    std::cout << "step5: init the placement row" << std::endl;
     for (const auto &plRow : _ptr_Parser->_placeRow)
     {
         struct PlacementRow placeRow;
@@ -246,6 +253,7 @@ void Solver::Solver::initSolver()
     }
 
     // step6: categorize instance to the bin
+    std::cout << "step6: categorize instance to the bin" << std::endl;
     //  compute the number of bin in x and y direction
     int numOfBin_x = (_ptr_Parser->_dieRx - (_ptr_Parser->_dieRx % _ptr_Parser->_binWidth)) / _ptr_Parser->_binWidth;
     int numOfBin_y = (_ptr_Parser->_dieRy - (_ptr_Parser->_dieRy % _ptr_Parser->_binHeight)) / _ptr_Parser->_binHeight;
@@ -311,6 +319,8 @@ void Solver::Solver::initSolver()
             }
         }
     }
+    std::cout << "End initialization!!! \n"
+              << std::endl;
 }
 
 void Solver::Solver::solve()
@@ -325,6 +335,19 @@ void Solver::Solver::printOutput()
     /*
     TODO: output
     */
+    /*for (size_t i = 0; i < _FF_D_arr.size(); i++)
+    {
+        pair<double, double> pos = getFFPosition(&_FF_D_arr[i]);
+        string name = _FF_D_arr[i].getName();
+        std::cout << name << " " << pos.first << " " << pos.second << std::endl;
+    }*/
+}
+
+void Solver::Solver::test()
+{
+    // initSolver();
+    legalize();
+    printOutput();
 }
 
 bool Solver::Solver::mbffCluster() // can add parameter to implement the Window-based sequence generation
@@ -344,7 +367,9 @@ vector<size_t> Solver::Solver::prePlace(vector<size_t> ff_group, pair<double, do
 
 void Solver::Solver::legalize()
 {
-    int _MaxIteration = 5;
+    std::cout << "Start the legalization!!" << std::endl;
+    int _MaxIteration = 30;
+    std::cout << "start building data structure for legalization." << std::endl;
     // init the data structure for FF, we assume every FF would have 1 instance and we will assign id for it
     vector<Inst::FF_D *> _id2ffPtr; // please change the ptr to the type you use and init it as following
     _id2ffPtr.reserve(_FF_D_arr.size());
@@ -361,6 +386,7 @@ void Solver::Solver::legalize()
         _id2gate.push_back(&_Gate_arr[i]);
     }
 
+    std::cout << "start to get placement row information." << std::endl;
     // init the set of placement row
     vector<struct PlacementRow> _Pid2PLR = getPlacementRow();
     /* in these legalization, we assume the placement row are uniform.
@@ -382,6 +408,7 @@ void Solver::Solver::legalize()
     double LFx_pos = getLowerLeftX();
     double LFy_pos = getLowerLeftY();
 
+    std::cout << "step 1: construct the matrix for placement grid." << std::endl;
     // step 1: construct the matrix for placement grid
     vector<vector<bool>> _availPosTable; // if the grid point is available, the value would be true
     vector<vector<pair<size_t, int>>> _listWait4Legal;
@@ -432,7 +459,7 @@ void Solver::Solver::legalize()
         initVec.reserve(512);
         _listWait4Legal.push_back(initVec);
     }
-
+    std::cout << "step 2: throw all FF to the nearests placement grid and sort it to placement row." << std::endl;
     // step 2: throw all FF to the nearests placement grid and sort it to placement row
     vector<bool> check_list4ffInit(_id2ffPtr.size(), false);
     for (size_t i = 0; i < _id2ffPtr.size(); i++)
@@ -462,7 +489,7 @@ void Solver::Solver::legalize()
         }
         else if (LLy >= int(numPlaceRow - ffHeight))
         {
-            LLx = int(numPlaceRow - ffHeight);
+            LLy = int(numPlaceRow - ffHeight);
         }
         ffPos.first = LFx_pos + (double(LLx) * siteWidth);
         ffPos.second = LFy_pos + (double(LLy) * siteHeight);
@@ -486,10 +513,13 @@ void Solver::Solver::legalize()
                   });
     }
 
+    std::cout << "step 3: DP from lowest row to the highest." << std::endl;
     // step 3: DP from lowest row to the highest
     int iterCount = 1; // use for iteration counter
     while (iterCount <= _MaxIteration)
     {
+        // std::cout << "Start the iteration: " << iterCount << std::endl;
+        iterCount++;
         // init some info for algorithm
         int _MaxDisplacement = 5 * iterCount;
         vector<vector<pair<size_t, int>>> _legalist = _listWait4Legal;
@@ -509,20 +539,26 @@ void Solver::Solver::legalize()
         }
         // start the DP
         bool Solvable = true;
+        std::cout << "Start DP process" << std::endl;
         for (size_t i = 0; i < numPlaceRow; i++)
         {
+            if (_legalist[i].empty())
+            {
+                continue;
+            }
+            std::cout << "Start to legalize row " << i << std::endl;
             // sort the legalist before start to legal it(some object may be added to it from lower row)
-            std::sort(_listWait4Legal[i].begin(), _listWait4Legal[i].end(), [](pair<size_t, int> a, pair<size_t, int> b)
+            std::sort(_legalist[i].begin(), _legalist[i].end(), [](pair<size_t, int> a, pair<size_t, int> b)
                       {
                           return a.second < b.second; // sort in acsending order
                       });
-            vector<vector<bool>> DPtable;                      // DPtable[ i-th object in legalist ][ position ]
-            vector<int> heightConstraint(int(siteNum), 0);     // record the available height for x position
-            vector<vector<list<pair<int, int>>>> solutionList; // pair<int y, int x>
-            vector<vector<unsigned int>> totalDisplace;        // totalDisplace[# of object][last position]
+            vector<vector<bool>> DPtable;                                // DPtable[ i-th object in legalist ][ position ]
+            vector<int> heightConstraint(int(siteNum), numPlaceRow - i); // record the available height for x position
+            vector<vector<list<pair<int, int>>>> solutionList;           // pair<int y, int x>
+            vector<vector<unsigned int>> totalDisplace;                  // totalDisplace[# of object][last position]
             // init totalDisplace
             totalDisplace.reserve(_legalist[i].size());
-            for (size_t k = 0; i < _legalist[i].size(); k++)
+            for (size_t k = 0; k < _legalist[i].size(); k++)
             {
                 vector<unsigned int> initVec(int(siteNum), -1);
                 totalDisplace.push_back(initVec);
@@ -560,7 +596,7 @@ void Solver::Solver::legalize()
             }
             // construct some local variables for iteration
             int ffHeight = std::ceil(getFFHeight(_id2ffPtr[_legalist[i][0].first]) / siteHeight);
-            int ffWidth = std::ceil(getFFWidth(_id2ffPtr[_legalist[i][0].first]) / siteHeight);
+            int ffWidth = std::ceil(getFFWidth(_id2ffPtr[_legalist[i][0].first]) / siteWidth);
             int leftLimit = std::max(0, _legalist[i][0].second - _MaxDisplacement);
             int rightLimit = std::min(_legalist[i][0].second + _MaxDisplacement, int(siteNum) - 1);
             // start to construct table for the first item in legalist
@@ -569,6 +605,7 @@ void Solver::Solver::legalize()
                 bool keepLoop = true;
                 if (_legalist[i].size() < 1)
                 {
+                    keepLoop = false;
                     break;
                 }
                 for (int k = 0; k < int(siteNum); k++) // k means you can use 0~k-th grid
@@ -618,7 +655,7 @@ void Solver::Solver::legalize()
                     if (isSafe)
                     {
                         DPtable[0][k] = true;
-                        unsigned long displace = abs(_legalist[i][0].second + ffWidth - 1 - k);
+                        unsigned int displace = abs(_legalist[i][0].second + ffWidth - 1 - k);
                         if (totalDisplace[0][k - 1] >= displace)
                         {
                             totalDisplace[0][k] = displace;
@@ -660,7 +697,7 @@ void Solver::Solver::legalize()
                 while (true)
                 {
                     ffHeight = std::ceil(getFFHeight(_id2ffPtr[_legalist[i][j].first]) / siteHeight);
-                    ffWidth = std::ceil(getFFWidth(_id2ffPtr[_legalist[i][j].first]) / siteHeight);
+                    ffWidth = std::ceil(getFFWidth(_id2ffPtr[_legalist[i][j].first]) / siteWidth);
                     leftLimit = std::max(0, _legalist[i][j].second - _MaxDisplacement);
                     rightLimit = std::min(_legalist[i][j].second + _MaxDisplacement, int(siteNum) - 1);
                     bool keepLoop = true;
@@ -680,7 +717,7 @@ void Solver::Solver::legalize()
                             DPtable[j][k] = false;
                             continue;
                         }
-                        if ((k > rightLimit) && !DPtable[0][k - 1]) // 0-th element has no solution, throw to higher row
+                        if ((k > rightLimit) && !DPtable[j][k - 1]) // j-th element has no solution, throw to higher row
                         {
                             /*
                                 can implement putting it to the lower row if it is space
@@ -698,7 +735,7 @@ void Solver::Solver::legalize()
                             _legalist[i].erase(_legalist[i].begin() + j);
                             break;
                         }
-                        bool isSafe = true;
+                        bool isSafe = true; // see whether k ~ k-ffWidth have any ostacle
                         for (int l = k; l > std::max(k - ffWidth, -1); l--)
                         {
                             if (!_availPosTable[i][l] || !_ffOccupation[i][l])
@@ -712,10 +749,10 @@ void Solver::Solver::legalize()
                                 break;
                             }
                         }
-                        if (isSafe)
+                        if (isSafe && DPtable[j - 1][k - ffWidth])
                         {
                             DPtable[j][k] = true;
-                            unsigned long displace = abs(_legalist[i][j].second + ffWidth - 1 - k);
+                            unsigned int displace = abs(_legalist[i][j].second + ffWidth - 1 - k);
                             if (totalDisplace[j][k - 1] >= displace + totalDisplace[j - 1][k - ffWidth])
                             {
                                 totalDisplace[j][k] = displace + totalDisplace[j - 1][k - ffWidth];
@@ -743,12 +780,22 @@ void Solver::Solver::legalize()
                     {
                         keepLoop = false;
                     }
-                    if (!keepLoop)
+                    if (!keepLoop || !Solvable)
                     {
                         break;
                     }
                 }
+                // if unsolvable, there's no need to DP for remaining item
+                if (!Solvable)
+                {
+                    break;
+                }
             }
+            if (!Solvable)
+            {
+                break;
+            }
+            std::cout << "successfully solve row " << i << ", record the solution" << std::endl;
             // as the assign for one row complete,
             // we start to record the solution and start the legalize for next row
             int counter = 0;
@@ -756,20 +803,21 @@ void Solver::Solver::legalize()
                  it != solutionList[_legalist[i].size() - 1][int(siteNum) - 1].end(); it++)
             {
                 ffHeight = std::ceil(getFFHeight(_id2ffPtr[_legalist[i][counter].first]) / siteHeight);
-                ffWidth = std::ceil(getFFWidth(_id2ffPtr[_legalist[i][counter].first]) / siteHeight);
+                ffWidth = std::ceil(getFFWidth(_id2ffPtr[_legalist[i][counter].first]) / siteWidth);
                 _finalSolution[i].push_back(*it);
                 // record the space occupied by the placed ff
                 for (int y = 0; y < ffHeight; y++)
                 {
                     for (int x = 0; x < ffWidth; x++)
                     {
-                        _ffOccupation[(*it).second + y][(*it).first + x] = false;
+                        _ffOccupation[(*it).first + y][(*it).second + x] = false;
                     }
                 }
                 counter++;
             }
         }
 
+        std::cout << "step 4: assign the result." << std::endl;
         // step 4: assign the result. If can't be solved, relax the constraint and goto step 3.
         if (!Solvable)
         {
@@ -787,7 +835,8 @@ void Solver::Solver::legalize()
                     setFFPosition(_id2ffPtr[_legalist[i][j].first], position);
                 }
             }
-            std::cout << "legalization successfully." << std::endl;
+            std::cout << "legalization successfully. \n"
+                      << std::endl;
             return;
         }
     }
@@ -806,7 +855,29 @@ vector<size_t> Solver::Solver::getGroupMem(Inst::FF_D *ptr) const
 
 void Solver::Solver::setFFPosition(Inst::FF_D *ptr, pair<double, double> &pos)
 {
-    ptr->setPosition(pos.first, pos.second);
+
+    for (const auto &id : ptr->grouped_member)
+    {
+        size_t id_arr = id - _FF_D_OFFSET;
+        Inst::FF_D *ptrD = &_FF_D_arr[id_arr];
+        Inst::FF_Q *ptrQ = &_FF_Q_arr[id_arr];
+        string dPinName = (ptrD->getName()).substr(ptrD->getName().find('/') + 1);
+        string qPinName = (ptrQ->getName()).substr(ptrQ->getName().find('/') + 1);
+        vector<string> PinName = _ptr_Parser->_flipflopLib[ptrD->FF_type].PinName;
+        vector<pair<coord, coord>> PinCrdnate = _ptr_Parser->_flipflopLib[ptrD->FF_type].PinCrdnate;
+        for (size_t i = 0; i < PinName.size(); i++)
+        {
+            pair<coord, coord> pinPos = pos;
+            if (dPinName == PinName[i])
+            {
+                ptrD->setPosition(pinPos.first + PinCrdnate[i].first, pinPos.second + PinCrdnate[i].second);
+            }
+            else if (qPinName == PinName[i])
+            {
+                ptrQ->setPosition(pos.first + PinCrdnate[i].first, pos.second + PinCrdnate[i].second);
+            }
+        }
+    }
 }
 
 double Solver::Solver::getFFWidth(Inst::FF_D *ptr) const
@@ -1145,9 +1216,9 @@ size_t Solver::Solver::name2ID(string &name) const
 
 vector<pair<double, double>> Solver::Solver::getAdjacentPinPosition(size_t &id) const
 {
+    vector<pair<double, double>> pinPosition;
     if (_ID_to_instance[id]->getType() == Inst::INST_FF_Q)
     {
-        vector<pair<double, double>> pinPosition;
         for (const auto &netID : _ID_to_instance[id]->getRelatedNet())
         {
             pinPosition.reserve(_NetList[netID].size());
@@ -1159,11 +1230,9 @@ vector<pair<double, double>> Solver::Solver::getAdjacentPinPosition(size_t &id) 
                 }
             }
         }
-        return pinPosition;
     }
     else if (_ID_to_instance[id]->getType() == Inst::INST_FF_D)
     {
-        vector<pair<double, double>> pinPosition;
         for (const auto &netID : _ID_to_instance[id]->getRelatedNet())
         {
             pinPosition.reserve(_NetList[netID].size());
@@ -1179,6 +1248,6 @@ vector<pair<double, double>> Solver::Solver::getAdjacentPinPosition(size_t &id) 
                 }
             }
         }
-        return pinPosition;
     }
+    return pinPosition;
 }

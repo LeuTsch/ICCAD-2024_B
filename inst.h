@@ -94,8 +94,8 @@ namespace Inst
         size_t FF_type;
         // size_t ID_to_Q;
         vector<size_t> faninCone;
-        vector<size_t> grouped_member; // store the global ID, not the position in FF_D_arr
-
+        vector<size_t> grouped_member; // store the global ID for FF_D, not the position in FF_D_arr, and would include itself
+                                       // this vector would have at least 1 element(itself)
         // function part
         InstType getType() const { return INST_FF_D; };
         string getName() const { return _Name_now; };
