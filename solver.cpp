@@ -433,21 +433,22 @@ void Solver::Solver::legalize()
         {
             LLy = 0;
         }
-        int URx = std::floor((upperRight.first - LFx_pos) / siteWidth);
+        int URx = std::ceil((upperRight.first - LFx_pos) / siteWidth);
         if (URx > siteNum - 1)
         {
             URx = int(siteNum - 1);
         }
-        int URy = std::floor((upperRight.second - LFy_pos) / siteWidth);
+        int URy = std::ceil((upperRight.second - LFy_pos) / siteHeight);
         if (URy > int(numPlaceRow - 1))
         {
             URy = int(numPlaceRow - 1);
         }
         // set grid related in _availPosTable to false
-        for (int y = LLy; y <= URy; y++)
+        for (int y = LLy; y < URy; y++)
         {
-            for (int x = LLx; x <= URx; x++)
+            for (int x = LLx; x < URx; x++)
             {
+                std::cout << "x = " << x << " y = " << y << std::endl;
                 _availPosTable[y][x] = false;
             }
         }
@@ -915,8 +916,8 @@ pair<double, double> Solver::Solver::getGateLF(Inst::Gate *ptr) const
 pair<double, double> Solver::Solver::getGateUR(Inst::Gate *ptr) const
 {
     pair<double, double> UR = ptr->getPosition();
-    UR.first += (_ptr_Parser->_instList[ptr->gate_type]).x;
-    UR.second += (_ptr_Parser->_instList[ptr->gate_type]).y;
+    UR.first += (_ptr_Parser->_gateLib[ptr->gate_type]).Width;
+    UR.second += (_ptr_Parser->_gateLib[ptr->gate_type]).Hight;
     return UR;
 }
 
