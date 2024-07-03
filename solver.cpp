@@ -390,7 +390,12 @@ void Solver::Solver::test()
 {
     // initSolver();
     legalize();
-    printOutput();
+    for (size_t i = 0; i < _FF_D_arr.size(); i++)
+    {
+        pair<double, double> pos = getFFPosition(&_FF_D_arr[i]);
+        string name = _FF_D_arr[i].getName();
+        std::cout << name << " " << pos.first << " " << pos.second << std::endl;
+    }
 }
 
 bool Solver::Solver::mbffCluster() // can add parameter to implement the Window-based sequence generation
@@ -491,7 +496,6 @@ void Solver::Solver::legalize()
         {
             for (int x = LLx; x < URx; x++)
             {
-                std::cout << "x = " << x << " y = " << y << std::endl;
                 _availPosTable[y][x] = false;
             }
         }
@@ -556,7 +560,6 @@ void Solver::Solver::legalize()
                       return a.second < b.second; // sort in acsending order
                   });
     }
-
     std::cout << "step 3: DP from lowest row to the highest." << std::endl;
     // step 3: DP from lowest row to the highest
     int iterCount = 1; // use for iteration counter
@@ -643,6 +646,7 @@ void Solver::Solver::legalize()
             int ffWidth = std::ceil(getFFWidth(_id2ffPtr[_legalist[i][0].first]) / siteWidth);
             int leftLimit = std::max(0, _legalist[i][0].second - _MaxDisplacement);
             int rightLimit = std::min(_legalist[i][0].second + _MaxDisplacement, int(siteNum) - 1);
+            std::cout << "Start to construct table for the first item in legalist " << std::endl;
             // start to construct table for the first item in legalist
             while (true)
             {
@@ -669,7 +673,7 @@ void Solver::Solver::legalize()
                         /*
                             can implement putting it to the lower row if it is space
                         */
-                        if (i + 2 > siteNum) // do not have upper row
+                        if (i + 2 > numPlaceRow) // do not have upper row
                         {
                             Solvable = false;
                             keepLoop = false;
@@ -726,6 +730,19 @@ void Solver::Solver::legalize()
                 {
                     keepLoop = false;
                 }
+                else // item 0 cannot be legalize in row i
+                {
+                    if (i + 2 > siteNum) // do not have upper row
+                    {
+                        Solvable = false;
+                        keepLoop = false;
+                    }
+                    else
+                    {
+                        _legalist[i + 1].push_back(_legalist[i][0]);
+                    }
+                    _legalist[i].erase(_legalist[i].begin());
+                }
                 if (!keepLoop)
                 {
                     break;
@@ -735,6 +752,7 @@ void Solver::Solver::legalize()
             {
                 break;
             }
+            std::cout << "DP for remaining object" << std::endl;
             // DP for remaining object
             for (size_t j = 1; j < _legalist[i].size(); j++)
             {
@@ -766,7 +784,7 @@ void Solver::Solver::legalize()
                             /*
                                 can implement putting it to the lower row if it is space
                             */
-                            if (i + 2 > siteNum) // do not have upper row
+                            if (i + 2 > numPlaceRow) // do not have upper row
                             {
                                 Solvable = false;
                                 keepLoop = false;
@@ -824,7 +842,21 @@ void Solver::Solver::legalize()
                     {
                         keepLoop = false;
                     }
-                    if (!keepLoop || !Solvable)
+                    else // item j cannot be legalize in row i
+                    {
+                        if (i + 2 > numPlaceRow) // do not have upper row
+                        {
+                            Solvable = false;
+                            keepLoop = false;
+                            break;
+                        }
+                        else
+                        {
+                            _legalist[i + 1].push_back(_legalist[i][j]);
+                        }
+                        _legalist[i].erase(_legalist[i].begin() + j);
+                    }
+                    if (!keepLoop)
                     {
                         break;
                     }
@@ -884,6 +916,8 @@ void Solver::Solver::legalize()
             return;
         }
     }
+    std::cout << "legalization fail !!!!!!!!! \n"
+              << std::endl;
 }
 
 vector<size_t> Solver::Solver::getGroupMem(Inst::FF_D *ptr) const
