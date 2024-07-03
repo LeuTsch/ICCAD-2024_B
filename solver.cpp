@@ -112,8 +112,11 @@ void Solver::Solver::initSolver()
 
     // start to assign Id
     _ID_to_instance.clear();
+    _ID_to_instance.reserve(_PIO_arr.size() + 5 * _Gate_arr.size() + _FF_D_arr.size() + _FF_Q_arr.size());
     _Name_to_ID.clear();
+    _Name_to_ID.reserve(_PIO_arr.size() + 5 * _Gate_arr.size() + _FF_D_arr.size() + _FF_Q_arr.size());
     _GID_to_ptrGate_map.clear();
+    _GID_to_ptrGate_map.reserve(10 * _Gate_arr.size());
     // assign Id for PIO
     for (size_t i = 0; i < _PIO_arr.size(); i++)
     {
@@ -168,12 +171,25 @@ void Solver::Solver::initSolver()
         }
         if (isCLKNet)
         {
+            bool clkIsOUT = false;
             for (const auto &PinName : netPinList)
             {
                 if (PinName.find("OUT") != std::string::npos)
                 {
                     _ClkList.push_back(PinName);
+                    clkIsOUT = true;
                     break;
+                }
+            }
+            if (!clkIsOUT)
+            {
+                for (const auto &PinName : netPinList)
+                {
+                    if (PinName.find("INPUT") != std::string::npos)
+                    {
+                        _ClkList.push_back(PinName);
+                        break;
+                    }
                 }
             }
             for (const auto &PinName : netPinList)
@@ -200,13 +216,40 @@ void Solver::Solver::initSolver()
             net.reserve(netPinList.size());
             for (const auto &PinName : netPinList)
             {
-                for (size_t i = 0; i < _Name_to_ID.size(); i++)
+                if (PinName.find("/D") != std::string::npos)
                 {
-                    if (PinName == _Name_to_ID[i])
+                    for (size_t i = _FF_D_OFFSET; i < _FF_Q_OFFSET; i++)
                     {
-                        _ID_to_instance[i]->addRelatedNet(netID);
-                        net.push_back(i);
-                        break;
+                        if (PinName == _Name_to_ID[i])
+                        {
+                            _ID_to_instance[i]->addRelatedNet(netID);
+                            net.push_back(i);
+                            break;
+                        }
+                    }
+                }
+                else if (PinName.find("/Q") != std::string::npos)
+                {
+                    for (size_t i = _FF_Q_OFFSET; i < _Name_to_ID.size(); i++)
+                    {
+                        if (PinName == _Name_to_ID[i])
+                        {
+                            _ID_to_instance[i]->addRelatedNet(netID);
+                            net.push_back(i);
+                            break;
+                        }
+                    }
+                }
+                else
+                {
+                    for (size_t i = 0; i < _Name_to_ID.size(); i++)
+                    {
+                        if (PinName == _Name_to_ID[i])
+                        {
+                            _ID_to_instance[i]->addRelatedNet(netID);
+                            net.push_back(i);
+                            break;
+                        }
                     }
                 }
             }
