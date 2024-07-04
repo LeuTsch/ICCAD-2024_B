@@ -560,6 +560,15 @@ void Solver::Solver::legalize()
                       return a.second < b.second; // sort in acsending order
                   });
     }
+
+    /*// test!!!!!!!!!!!!!!!!!!!
+    for (const auto &aaa : _listWait4Legal[25])
+    {
+        std::cout << "id in _listWait4Legal[25] " << aaa.first << ", xPos: " << aaa.second << std::endl;
+    }
+
+    // end test*/
+
     std::cout << "step 3: DP from lowest row to the highest." << std::endl;
     // step 3: DP from lowest row to the highest
     int iterCount = 1; // use for iteration counter
@@ -568,7 +577,7 @@ void Solver::Solver::legalize()
         // std::cout << "Start the iteration: " << iterCount << std::endl;
         iterCount++;
         // init some info for algorithm
-        int _MaxDisplacement = 5 * iterCount;
+        int _MaxDisplacement = 100 * iterCount;
         vector<vector<pair<size_t, int>>> _legalist = _listWait4Legal;
         vector<vector<pair<int, int>>> _finalSolution(numPlaceRow); // pair<y index, x index>
         vector<vector<bool>> _ffOccupation;                         // record the position occupied by ff
@@ -586,22 +595,22 @@ void Solver::Solver::legalize()
         }
         // start the DP
         bool Solvable = true;
-        std::cout << "Start DP process" << std::endl;
+        // std::cout << "Start DP process" << std::endl;
         for (size_t i = 0; i < numPlaceRow; i++)
         {
             if (_legalist[i].empty())
             {
                 continue;
             }
-            std::cout << "Start to legalize row " << i << std::endl;
-            // sort the legalist before start to legal it(some object may be added to it from lower row)
+            // std::cout << "Start to legalize row " << i << std::endl;
+            //   sort the legalist before start to legal it(some object may be added to it from lower row)
             std::sort(_legalist[i].begin(), _legalist[i].end(), [](pair<size_t, int> a, pair<size_t, int> b)
                       {
                           return a.second < b.second; // sort in acsending order
                       });
             vector<vector<bool>> DPtable;                                // DPtable[ i-th object in legalist ][ position ]
             vector<int> heightConstraint(int(siteNum), numPlaceRow - i); // record the available height for x position
-            vector<vector<list<pair<int, int>>>> solutionList;           // pair<int y, int x>
+            vector<vector<vector<pair<int, int>>>> solutionList;         // pair<int y, int x>
             vector<vector<unsigned int>> totalDisplace;                  // totalDisplace[# of object][last position]
             // init totalDisplace
             totalDisplace.reserve(_legalist[i].size());
@@ -614,8 +623,8 @@ void Solver::Solver::legalize()
             solutionList.reserve(_legalist[i].size());
             for (size_t k = 0; k < _legalist[i].size(); k++)
             {
-                list<pair<int, int>> initList;
-                vector<list<pair<int, int>>> initVec(int(siteNum), initList);
+                vector<pair<int, int>> initList;
+                vector<vector<pair<int, int>>> initVec(int(siteNum), initList);
                 solutionList.push_back(initVec);
             }
             // init DP table
@@ -641,15 +650,15 @@ void Solver::Solver::legalize()
                     }
                 }
             }
-            // construct some local variables for iteration
-            int ffHeight = std::ceil(getFFHeight(_id2ffPtr[_legalist[i][0].first]) / siteHeight);
-            int ffWidth = std::ceil(getFFWidth(_id2ffPtr[_legalist[i][0].first]) / siteWidth);
-            int leftLimit = std::max(0, _legalist[i][0].second - _MaxDisplacement);
-            int rightLimit = std::min(_legalist[i][0].second + _MaxDisplacement, int(siteNum) - 1);
-            std::cout << "Start to construct table for the first item in legalist " << std::endl;
-            // start to construct table for the first item in legalist
+            // std::cout << "Start to construct table for the first item in legalist " << std::endl;
+            //   start to construct table for the first item in legalist
             while (true)
             {
+                // construct some local variables for iteration
+                int ffHeight = std::ceil(getFFHeight(_id2ffPtr[_legalist[i][0].first]) / siteHeight);
+                int ffWidth = std::ceil(getFFWidth(_id2ffPtr[_legalist[i][0].first]) / siteWidth);
+                int leftLimit = std::max(0, _legalist[i][0].second - _MaxDisplacement);
+                int rightLimit = std::min(_legalist[i][0].second + _MaxDisplacement, int(siteNum) - 1);
                 bool keepLoop = true;
                 if (_legalist[i].size() < 1)
                 {
@@ -752,16 +761,25 @@ void Solver::Solver::legalize()
             {
                 break;
             }
-            std::cout << "DP for remaining object" << std::endl;
-            // DP for remaining object
+            // std::cout << "DP for remaining object" << std::endl;
+            //   DP for remaining object
             for (size_t j = 1; j < _legalist[i].size(); j++)
             {
+                // optimize the memory usage
+                if (j >= 2)
+                {
+                    solutionList[j - 2].clear();
+                    totalDisplace[j - 2].clear();
+                    DPtable[j - 2].clear();
+                }
+
                 while (true)
                 {
-                    ffHeight = std::ceil(getFFHeight(_id2ffPtr[_legalist[i][j].first]) / siteHeight);
-                    ffWidth = std::ceil(getFFWidth(_id2ffPtr[_legalist[i][j].first]) / siteWidth);
-                    leftLimit = std::max(0, _legalist[i][j].second - _MaxDisplacement);
-                    rightLimit = std::min(_legalist[i][j].second + _MaxDisplacement, int(siteNum) - 1);
+                    // construct some local variables for iteration
+                    int ffHeight = std::ceil(getFFHeight(_id2ffPtr[_legalist[i][j].first]) / siteHeight);
+                    int ffWidth = std::ceil(getFFWidth(_id2ffPtr[_legalist[i][j].first]) / siteWidth);
+                    int leftLimit = std::max(0, _legalist[i][j].second - _MaxDisplacement);
+                    int rightLimit = std::min(_legalist[i][j].second + _MaxDisplacement, int(siteNum) - 1);
                     bool keepLoop = true;
                     if (j >= _legalist[i].size())
                     {
@@ -769,6 +787,7 @@ void Solver::Solver::legalize()
                     }
                     for (int k = 0; k < int(siteNum); k++) // k means you can use 0~k-th grid
                     {
+                        solutionList[j][k].reserve(_legalist[i].size());
                         if (k < ffWidth - 1) // space is not enough for put it in
                         {
                             DPtable[j][k] = false;
@@ -871,15 +890,46 @@ void Solver::Solver::legalize()
             {
                 break;
             }
-            std::cout << "successfully solve row " << i << ", record the solution" << std::endl;
-            // as the assign for one row complete,
-            // we start to record the solution and start the legalize for next row
+            // std::cout << "successfully solve row " << i << ", record the solution" << std::endl;
+            //   as the assign for one row complete,
+            //   we start to record the solution and start the legalize for next row
             int counter = 0;
+
+            // test!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+            /*std::cout << "solutionList.size = " << solutionList.size() << std::endl;
+            std::cout << "_legalist[i].size = " << _legalist[i].size() << std::endl;
+            std::cout << "solutionList[_legalist[i].size() - 1].size = " << solutionList[_legalist[i].size() - 1].size() << std::endl;
+            std::cout << "int(siteNum) = " << int(siteNum) << std::endl;
+            int ccc = 0;
+            for (const auto &a : solutionList[_legalist[i].size() - 1][int(siteNum) - 1])
+            {
+                std::cout << "AAA" << std::endl;
+                if (a.first != int(i))
+                {
+                    std::cout << "i = " << i << std::endl;
+                    std::cout << "id = " << _legalist[i][ccc].first << std::endl;
+                    std::cout << "FFName = " << _id2ffPtr[_legalist[i][ccc].first]->getName() << std::endl;
+                    std::cout << "(*it).first = " << a.first << std::endl;
+                    std::cout << "(*it).second = " << a.second << std::endl;
+                    ccc++;
+                }
+            }
+            // end test*/
+            if (_legalist[i].empty())
+            {
+                continue;
+            }
             for (auto it = solutionList[_legalist[i].size() - 1][int(siteNum) - 1].begin();
                  it != solutionList[_legalist[i].size() - 1][int(siteNum) - 1].end(); it++)
             {
-                ffHeight = std::ceil(getFFHeight(_id2ffPtr[_legalist[i][counter].first]) / siteHeight);
-                ffWidth = std::ceil(getFFWidth(_id2ffPtr[_legalist[i][counter].first]) / siteWidth);
+                // std::cout << "counter = " << counter << std::endl;
+                int ffHeight = std::ceil(getFFHeight(_id2ffPtr[_legalist[i][counter].first]) / siteHeight);
+                int ffWidth = std::ceil(getFFWidth(_id2ffPtr[_legalist[i][counter].first]) / siteWidth);
+                // std::cout << "FFName = " << _id2ffPtr[_legalist[i][counter].first]->getName() << std::endl;
+                // std::cout << "ffHeight = " << ffHeight << std::endl;
+                // std::cout << "ffWidth = " << ffWidth << std::endl;
+                // std::cout << "(*it).first = " << (*it).first << std::endl;
+                // std::cout << "(*it).second = " << (*it).second << std::endl;
                 _finalSolution[i].push_back(*it);
                 // record the space occupied by the placed ff
                 for (int y = 0; y < ffHeight; y++)
@@ -889,6 +939,7 @@ void Solver::Solver::legalize()
                         _ffOccupation[(*it).first + y][(*it).second + x] = false;
                     }
                 }
+                // std::cout << "counter = " << counter << " end" << std::endl;
                 counter++;
             }
         }
@@ -1016,7 +1067,7 @@ double Solver::Solver::getLowerLeftY() const
     double LFy = _PlaceRow[0].y;
     for (const auto &plR : _PlaceRow)
     {
-        if (plR.x < LFy)
+        if (plR.y < LFy)
         {
             LFy = plR.y;
         }
