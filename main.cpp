@@ -5,6 +5,7 @@
 
 #include "parser.h"
 #include "solver.h"
+#include "STAEngine.h"
 
 using namespace std;
 int main(int argc, char *argv[])

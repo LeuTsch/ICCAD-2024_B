@@ -39,6 +39,9 @@ namespace Solver
         void printOutput();
         void test(); // do whatever test you want here
 
+        // friend class declaration
+        friend class STAEngine;
+
     private:
         // data part
         Parse::Parser *_ptr_Parser;
