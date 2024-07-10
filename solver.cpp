@@ -139,7 +139,7 @@ void Solver::Solver::initSolver()
         ptr_gate->PIN_OFFSET = _ID_to_instance.size();
         for (size_t j = 0; j < _Gate_arr[i].pinName.size(); j++)
         {
-            _Name_to_ID[ptr->getName() + "/" + _Gate_arr[i].pinName[j]] = i + _GATE_OFFSET;
+            _Name_to_ID[ptr->getName() + "/" + _Gate_arr[i].pinName[j]] = j + ptr_gate->PIN_OFFSET;
             _ID_to_instance.push_back(ptr);
             _GID_to_ptrGate_map.push_back(ptr_gate);
         }
@@ -353,7 +353,7 @@ void Solver::Solver::test()
     // initSolver();
     string a = "C9/IN";
     size_t in = name2ID(a);
-    a = "C9/OUT";
+    a = "C12/OUT";
     size_t out = name2ID(a);
     std::cout << _ptr_STAEngine->getDistance(in, out) << std::endl;
 }

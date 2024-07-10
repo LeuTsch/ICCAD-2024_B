@@ -6,7 +6,7 @@ DieSize 0 0 125 70
 NumInput 3
 Input INPUT0 5 15
 Input INPUT1 0 45
-Input INPUT2 0 15
+Input CK0 0 15
 NumOutput 2
 Output OUTPUT0 110 30
 Output OUTPUT1 110 70
@@ -27,11 +27,10 @@ Gate G2 5.0 10.0 3
 Pin IN0 0.0 8.0
 Pin IN1 0.0 4.0
 Pin OUT 5.0 8.0
-NumInstances 13
+NumInstances 12
 Inst C1 FF1 15.0 50.0
 Inst C2 FF1 25.0 25.0
 Inst C3 FF1 20.0 5.0
-Inst C4 FF1 45.0 55.0
 Inst C5 FF1 50.0 10.0
 Inst C6 FF1 60.0 35.0
 Inst C7 FF1 90.0 55.0
@@ -41,7 +40,7 @@ Inst C10 G2 40.0 35.0
 Inst C11 G2 35.0 10.0
 Inst C12 G2 75.0 45.0
 Inst C13 G2 80.0 25.0
-NumNets 16
+NumNets 15
 Net N1 3
 Pin INPUT0
 Pin C1/D
@@ -62,16 +61,13 @@ Pin C3/Q
 Pin C11/IN1
 Net N6 2
 Pin C9/OUT
-Pin C4/D
+Pin C12/IN0
 Net N7 2
 Pin C10/OUT
 Pin C6/D
 Net N8 2
 Pin C11/OUT
 Pin C5/D
-Net N9 2
-Pin C4/Q
-Pin C12/IN0
 Net N10 2
 Pin C6/Q
 Pin C13/IN0
@@ -91,12 +87,11 @@ Pin OUTPUT0
 Net N15 2
 Pin C8/Q
 Pin OUTPUT1
-Net CK0 9
-Pin INPUT2
+Net CK0 8
+Pin CLK0
 Pin C1/CLK
 Pin C2/CLK
 Pin C3/CLK
-Pin C4/CLK
 Pin C5/CLK
 Pin C6/CLK
 Pin C7/CLK

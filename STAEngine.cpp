@@ -120,20 +120,12 @@ void Solver::STAEngine::initEngine(const vector<vector<size_t>> &netList, const 
 
 void Solver::STAEngine::propagateForward(const size_t &InPinIdBase, const size_t &InPinIdNext, double d)
 {
-    std::cout << "KK" << std::endl;
     list<size_t> outPinList = getOutPinRelated(InPinIdNext);
-    std::cout << "KKK" << std::endl;
     int posBase = binarySearch(_distanceList, InPinIdBase);
-    if (posBase == -1)
-    {
-        std::cout << "Alert: id " << InPinIdBase << " not found" << std::endl;
-    }
-
     int posNext = binarySearch(_distanceList, InPinIdNext);
     assert(posNext != -1);
     for (const auto &outID : outPinList)
     {
-        std::cout << "K" << std::endl;
         // step1: record this out Pin to the distance list of Base in pin
         int outIndex_base = binarySearch(_distanceList[posBase].second, outID);
         if (outIndex_base != -1) // if this path already explored
@@ -148,12 +140,9 @@ void Solver::STAEngine::propagateForward(const size_t &InPinIdBase, const size_t
                 continue; // else skip it
             }
         }
-        std::cout << "A" << std::endl;
         int outIndex_Next = binarySearch(_distanceList[posNext].second, outID);
-        std::cout << "B" << std::endl;
         if (outIndex_Next == -1) // not yet build the distance list for this path
         {
-            std::cout << "AA" << std::endl;
             pair<size_t, double> a;
             a.first = outID;
             a.second = 0;
@@ -171,7 +160,6 @@ void Solver::STAEngine::propagateForward(const size_t &InPinIdBase, const size_t
             disPair.first = outID;
             disPair.second = d;
             _distanceList[posBase].second.push_back(disPair);
-            std::cout << "D" << std::endl;
             // sort it
             std::sort(_distanceList[posBase].second.begin(), _distanceList[posBase].second.end(), [](pair<size_t, double> a, pair<size_t, double> b)
                       {
@@ -180,16 +168,12 @@ void Solver::STAEngine::propagateForward(const size_t &InPinIdBase, const size_t
         }
 
         // step2: recurrsively explore the in pin connect to this out pin
-        std::cout << "AAA" << std::endl;
         vector<size_t> nextInPin = _InPinList[getRelatedNet(outID)];
-        std::cout << "C" << std::endl;
         for (const auto &ID_next : nextInPin)
         {
             pair<double, double> outPos = getPinPosition(outID);
             pair<double, double> inPos = getPinPosition(ID_next);
-            std::cout << "CC" << std::endl;
             double dis = std::fabs(outPos.first - inPos.first) + std::fabs(outPos.second - inPos.second);
-            std::cout << "CCC" << std::endl;
             propagateForward(InPinIdBase, ID_next, d + dis);
         }
     }
