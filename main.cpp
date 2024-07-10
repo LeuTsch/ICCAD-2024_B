@@ -24,7 +24,9 @@ int main(int argc, char *argv[])
     cout << "Time for read file: " << (b - a) << " sec" << endl;
 
     Solver::Solver solver;
+    Solver::STAEngine STAEngine;
     solver.setParserPtr(&parser);
+    solver.setSTAEnginePtr(&STAEngine);
     solver.initSolver();
     a = clock();
     cout << "Time for initialize solver: " << (a - b) << " sec" << endl;

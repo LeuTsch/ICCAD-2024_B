@@ -5,10 +5,12 @@
 #include <iostream>
 #include <assert.h>
 #include <algorithm>
+#include <map>
 #include <list>
 
 #include "inst.h"
 #include "solver.h"
+#include "STAEngine.h"
 
 using std::list;
 using std::pair;
@@ -41,6 +43,7 @@ void Solver::Solver::initSolver()
     _FF_D_arr.reserve(_ptr_Parser->_instList.size());
     _FF_Q_arr.reserve(_ptr_Parser->_instList.size());
     _Gate_arr.reserve(_ptr_Parser->_instList.size());
+    _initFFName2arrPos.clear();
     for (const auto &instance : _ptr_Parser->_instList)
     {
         bool isFF = false;
@@ -51,6 +54,10 @@ void Solver::Solver::initSolver()
             if (_ptr_Parser->_flipflopLib[i].Name == instance.Type)
             {
                 string nameFFbit = instance.Name + "/";
+                pair<size_t, size_t> rangeInArr;
+                rangeInArr.first = _FF_D_arr.size();
+                rangeInArr.second = rangeInArr.first + _ptr_Parser->_flipflopLib[i].Bit - 1;
+                _initFFName2arrPos[nameFFbit] = rangeInArr;
                 // for every pin (D/Q), we create an instance for it
                 for (size_t k = 0; k < _ptr_Parser->_flipflopLib[i].PinName.size(); k++)
                 {
@@ -114,14 +121,13 @@ void Solver::Solver::initSolver()
     _ID_to_instance.clear();
     _ID_to_instance.reserve(_PIO_arr.size() + 5 * _Gate_arr.size() + _FF_D_arr.size() + _FF_Q_arr.size());
     _Name_to_ID.clear();
-    _Name_to_ID.reserve(_PIO_arr.size() + 5 * _Gate_arr.size() + _FF_D_arr.size() + _FF_Q_arr.size());
     _GID_to_ptrGate_map.clear();
     _GID_to_ptrGate_map.reserve(10 * _Gate_arr.size());
     // assign Id for PIO
     for (size_t i = 0; i < _PIO_arr.size(); i++)
     {
         Inst::Inst *ptr = &_PIO_arr[i];
-        _Name_to_ID.push_back(ptr->getName());
+        _Name_to_ID[ptr->getName()] = i;
         _ID_to_instance.push_back(ptr);
     }
     _GATE_OFFSET = _ID_to_instance.size();
@@ -133,7 +139,7 @@ void Solver::Solver::initSolver()
         ptr_gate->PIN_OFFSET = _ID_to_instance.size();
         for (size_t j = 0; j < _Gate_arr[i].pinName.size(); j++)
         {
-            _Name_to_ID.push_back(ptr->getName() + "/" + _Gate_arr[i].pinName[j]);
+            _Name_to_ID[ptr->getName() + "/" + _Gate_arr[i].pinName[j]] = i + _GATE_OFFSET;
             _ID_to_instance.push_back(ptr);
             _GID_to_ptrGate_map.push_back(ptr_gate);
         }
@@ -144,7 +150,7 @@ void Solver::Solver::initSolver()
     {
         Inst::Inst *ptr = &_FF_D_arr[i];
         _FF_D_arr[i].grouped_member.push_back(_FF_D_OFFSET + i);
-        _Name_to_ID.push_back(_FF_D_arr[i].getOriName());
+        _Name_to_ID[_FF_D_arr[i].getOriName()] = i + _FF_D_OFFSET;
         _ID_to_instance.push_back(ptr);
     }
     _FF_Q_OFFSET = _ID_to_instance.size();
@@ -152,7 +158,7 @@ void Solver::Solver::initSolver()
     for (size_t i = 0; i < _FF_Q_arr.size(); i++)
     {
         Inst::Inst *ptr = &_FF_Q_arr[i];
-        _Name_to_ID.push_back(_FF_Q_arr[i].getOriName());
+        _Name_to_ID[_FF_Q_arr[i].getOriName()] = i + _FF_Q_OFFSET;
         _ID_to_instance.push_back(ptr);
     }
 
@@ -163,7 +169,7 @@ void Solver::Solver::initSolver()
         bool isCLKNet = false;
         for (const auto &PinName : netPinList)
         {
-            if (PinName.find("CLK") != std::string::npos)
+            if (PinName.find("CLK") != std::string::npos || PinName.find("clk") != std::string::npos)
             {
                 isCLKNet = true;
                 break;
@@ -171,39 +177,28 @@ void Solver::Solver::initSolver()
         }
         if (isCLKNet)
         {
-            bool clkIsOUT = false;
             for (const auto &PinName : netPinList)
             {
-                if (PinName.find("OUT") != std::string::npos)
+                if (PinName.find("OUT") != std::string::npos || PinName.find("/") == std::string::npos || PinName.find("out") != std::string::npos)
                 {
+                    if (PinName.find("OUTPUT") != std::string::npos)
+                    {
+                        continue;
+                    }
                     _ClkList.push_back(PinName);
-                    clkIsOUT = true;
                     break;
                 }
             }
-            if (!clkIsOUT)
-            {
-                for (const auto &PinName : netPinList)
-                {
-                    if (PinName.find("INPUT") != std::string::npos)
-                    {
-                        _ClkList.push_back(PinName);
-                        break;
-                    }
-                }
-            }
             for (const auto &PinName : netPinList)
             {
-                if (PinName.find("CLK") != std::string::npos)
+                if (PinName.find("/CLK") != std::string::npos || PinName.find("/clk") != std::string::npos)
                 {
                     string insName = PinName.substr(0, PinName.find("/") + 1);
-                    for (size_t i = 0; i < _FF_D_arr.size(); i++)
+                    pair<size_t, size_t> posArr = _initFFName2arrPos.at(insName);
+                    for (size_t i = posArr.first; i <= posArr.second; i++)
                     {
-                        if (_FF_D_arr[i].getOriName().find(insName) == 0)
-                        {
-                            _FF_D_arr[i].setClk(_ClkList.size() - 1);
-                            _FF_Q_arr[i].setClk(_ClkList.size() - 1);
-                        }
+                        _FF_D_arr[i].setClk(_ClkList.size() - 1);
+                        _FF_Q_arr[i].setClk(_ClkList.size() - 1);
                     }
                 }
             }
@@ -216,42 +211,9 @@ void Solver::Solver::initSolver()
             net.reserve(netPinList.size());
             for (const auto &PinName : netPinList)
             {
-                if (PinName.find("/D") != std::string::npos)
-                {
-                    for (size_t i = _FF_D_OFFSET; i < _FF_Q_OFFSET; i++)
-                    {
-                        if (PinName == _Name_to_ID[i])
-                        {
-                            _ID_to_instance[i]->addRelatedNet(netID);
-                            net.push_back(i);
-                            break;
-                        }
-                    }
-                }
-                else if (PinName.find("/Q") != std::string::npos)
-                {
-                    for (size_t i = _FF_Q_OFFSET; i < _Name_to_ID.size(); i++)
-                    {
-                        if (PinName == _Name_to_ID[i])
-                        {
-                            _ID_to_instance[i]->addRelatedNet(netID);
-                            net.push_back(i);
-                            break;
-                        }
-                    }
-                }
-                else
-                {
-                    for (size_t i = 0; i < _Name_to_ID.size(); i++)
-                    {
-                        if (PinName == _Name_to_ID[i])
-                        {
-                            _ID_to_instance[i]->addRelatedNet(netID);
-                            net.push_back(i);
-                            break;
-                        }
-                    }
-                }
+                size_t pinID = _Name_to_ID[PinName];
+                _ID_to_instance[pinID]->addRelatedNet(netID);
+                net.push_back(pinID);
             }
             _NetList.push_back(net);
         }
@@ -272,14 +234,7 @@ void Solver::Solver::initSolver()
     std::cout << "step4: update the slack for the pin, and distribute slack" << std::endl;
     for (const auto &N2Slack : _ptr_Parser->_timeSlack)
     {
-        for (size_t i = 0; i < _FF_D_arr.size(); i++)
-        {
-            if (_FF_D_arr[i].getOriName() == N2Slack.first)
-            {
-                _FF_D_arr[i].setOriSlack(N2Slack.second);
-                break;
-            }
-        }
+        _FF_D_arr[_Name_to_ID.at(N2Slack.first) - _FF_D_OFFSET].setOriSlack(N2Slack.second);
     }
 
     // step5: init the placement row
@@ -362,6 +317,13 @@ void Solver::Solver::initSolver()
             }
         }
     }
+
+    // step7: initialize the STA engine
+    std::cout << "step7: initialize the STA engine" << std::endl;
+    assert(_ptr_STAEngine != nullptr);
+    _ptr_STAEngine->setSolverPtr(this);
+    _ptr_STAEngine->initEngine(_NetList, _ID_to_instance);
+
     std::cout << "End initialization!!! \n"
               << std::endl;
 }
@@ -389,13 +351,11 @@ void Solver::Solver::printOutput()
 void Solver::Solver::test()
 {
     // initSolver();
-    legalize();
-    for (size_t i = 0; i < _FF_D_arr.size(); i++)
-    {
-        pair<double, double> pos = getFFPosition(&_FF_D_arr[i]);
-        string name = _FF_D_arr[i].getName();
-        std::cout << name << " " << pos.first << " " << pos.second << std::endl;
-    }
+    string a = "C9/IN";
+    size_t in = name2ID(a);
+    a = "C9/OUT";
+    size_t out = name2ID(a);
+    std::cout << _ptr_STAEngine->getDistance(in, out) << std::endl;
 }
 
 bool Solver::Solver::mbffCluster() // can add parameter to implement the Window-based sequence generation
@@ -1333,14 +1293,7 @@ pair<double, double> Solver::Solver::findPinPosition(const size_t &id) const
 
 size_t Solver::Solver::name2ID(string &name) const
 {
-    for (size_t i = 0; i < _Name_to_ID.size(); i++)
-    {
-        if (name == _Name_to_ID[i])
-        {
-            return i;
-        }
-    }
-    return -1;
+    return _Name_to_ID.at(name);
 }
 
 vector<pair<double, double>> Solver::Solver::getAdjacentPinPosition(size_t &id) const

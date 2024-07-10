@@ -22,8 +22,8 @@ namespace Solver
     {
     public:
         STAEngine() : _ptrSolver(nullptr){};
-        double getDistance(size_t &, size_t &) const;                                // we would expect the first ID is gate's in, the other is ID of out
-        void initEngine(const vector<vector<size_t>> &, const vector<Inst::Inst *>); // the input should be a set of Net and an ID to pin mapping
+        double getDistance(size_t &, size_t &) const;                                  // we would expect the first ID is gate's in, the other is ID of out
+        void initEngine(const vector<vector<size_t>> &, const vector<Inst::Inst *> &); // the input should be a set of Net and an ID to pin mapping
 
         void setSolverPtr(Solver *ptr) { _ptrSolver = ptr; }; // change to the class you may need for auxilury data
 

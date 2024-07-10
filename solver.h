@@ -5,6 +5,7 @@
 #include <vector>
 #include <utility>
 #include <iostream>
+#include <map>
 
 #include "inst.h"
 #include "parser.h"
@@ -28,12 +29,14 @@ namespace Solver
         double siteHight;
         double totalNumOfSites;
     };
+    class STAEngine; // forward declaration
 
     class Solver
     {
     public:
-        Solver() : _ptr_Parser(nullptr) {}
+        Solver() : _ptr_Parser(nullptr), _ptr_STAEngine(nullptr) {}
         void setParserPtr(Parse::Parser *ptr) { _ptr_Parser = ptr; };
+        void setSTAEnginePtr(STAEngine *ptr) { _ptr_STAEngine = ptr; };
         void initSolver();
         void solve();
         void printOutput();
@@ -45,6 +48,7 @@ namespace Solver
     private:
         // data part
         Parse::Parser *_ptr_Parser;
+        STAEngine *_ptr_STAEngine;
         size_t _GATE_OFFSET;
         size_t _FF_D_OFFSET;
         size_t _FF_Q_OFFSET;
@@ -54,7 +58,8 @@ namespace Solver
         vector<Inst::Gate *> _GID_to_ptrGate_map;
         vector<Inst::FF_D> _FF_D_arr;
         vector<Inst::FF_Q> _FF_Q_arr;
-        vector<string> _Name_to_ID;
+        std::map<string, size_t> _Name_to_ID;                      // map pin's name(ex: C8763/D) to its ID
+        std::map<string, pair<size_t, size_t>> _initFFName2arrPos; // map instace(ex: C87/ ) name to its pin position in FF_D_arr <start, end>
         vector<vector<size_t>> _NetList;
         vector<struct PlacementRow> _PlaceRow;
         vector<string> _ClkList;

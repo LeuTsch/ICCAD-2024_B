@@ -1,0 +1,128 @@
+Alpha 1
+Beta 5
+Gamma 5
+Lambda 1
+DieSize 0 0 125 70
+NumInput 3
+Input INPUT0 5 15
+Input INPUT1 0 45
+Input INPUT2 0 15
+NumOutput 2
+Output OUTPUT0 110 30
+Output OUTPUT1 110 70
+FlipFlop 1 FF1 5.0 10.0 3
+Pin D 0.0 8.0
+Pin Q 5.0 8.0
+Pin CLK 0.0 2.0
+FlipFlop 2 FF2 8.0 10.0 5
+Pin D0 0.0 9.0
+Pin D1 0.0 6.0
+Pin Q0 8.0 9.0
+Pin Q1 8.0 6.0
+Pin CLK 0.0 2.0
+Gate G1 5.0 10.0 2
+Pin IN 0.0 8.0
+Pin OUT 5.0 2.0
+Gate G2 5.0 10.0 3
+Pin IN0 0.0 8.0
+Pin IN1 0.0 4.0
+Pin OUT 5.0 8.0
+NumInstances 13
+Inst C1 FF1 15.0 50.0
+Inst C2 FF1 25.0 25.0
+Inst C3 FF1 20.0 5.0
+Inst C4 FF1 45.0 55.0
+Inst C5 FF1 50.0 10.0
+Inst C6 FF1 60.0 35.0
+Inst C7 FF1 90.0 55.0
+Inst C8 FF1 95.0 20.0
+Inst C9 G1 30.0 55.0
+Inst C10 G2 40.0 35.0
+Inst C11 G2 35.0 10.0
+Inst C12 G2 75.0 45.0
+Inst C13 G2 80.0 25.0
+NumNets 16
+Net N1 3
+Pin INPUT0
+Pin C1/D
+Pin C2/D
+Net N2 2
+Pin INPUT1
+Pin C3/D
+Net N3 3
+Pin C1/Q
+Pin C9/IN
+Pin C10/IN0
+Net N4 3
+Pin C2/Q
+Pin C10/IN1
+Pin C11/IN0
+Net N5 2
+Pin C3/Q
+Pin C11/IN1
+Net N6 2
+Pin C9/OUT
+Pin C4/D
+Net N7 2
+Pin C10/OUT
+Pin C6/D
+Net N8 2
+Pin C11/OUT
+Pin C5/D
+Net N9 2
+Pin C4/Q
+Pin C12/IN0
+Net N10 2
+Pin C6/Q
+Pin C13/IN0
+Net N11 3
+Pin C5/Q
+Pin C12/IN1
+Pin C13/IN1
+Net N12 2
+Pin C12/OUT
+Pin C7/D
+Net N13 2
+Pin C13/OUT
+Pin C8/D
+Net N14 2
+Pin C7/Q
+Pin OUTPUT0
+Net N15 2
+Pin C8/Q
+Pin OUTPUT1
+Net CK0 9
+Pin INPUT2
+Pin C1/CLK
+Pin C2/CLK
+Pin C3/CLK
+Pin C4/CLK
+Pin C5/CLK
+Pin C6/CLK
+Pin C7/CLK
+Pin C8/CLK
+BinWidth 10.0
+BinHeight 10.0
+BinMaxUtil 79.0
+PlacementRows 0.0 0.0 5.0 5.0 25
+PlacementRows 0.0 5.0 5.0 5.0 25
+PlacementRows 0.0 10.0 5.0 5.0 25
+PlacementRows 0.0 15.0 5.0 5.0 25
+PlacementRows 0.0 20.0 5.0 5.0 25
+PlacementRows 0.0 25.0 5.0 5.0 25
+PlacementRows 0.0 30.0 5.0 5.0 25
+PlacementRows 0.0 35.0 5.0 5.0 25
+PlacementRows 0.0 40.0 5.0 5.0 25
+PlacementRows 0.0 45.0 5.0 5.0 25
+PlacementRows 0.0 50.0 5.0 5.0 25
+PlacementRows 0.0 55.0 5.0 5.0 25
+PlacementRows 0.0 60.0 5.0 5.0 25
+PlacementRows 0.0 65.0 5.0 5.0 25
+DisplacementDelay 0.01
+QpinDelay FF1 1.0
+QpinDelay FF2 2.0
+TimingSlack C1 D 1.0
+TimingSlack C2 D 1.0
+TimingSlack C3 D 1.0
+GatePower FF1 10.0
+GatePower FF2 17.0

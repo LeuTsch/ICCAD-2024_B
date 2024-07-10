@@ -8,7 +8,6 @@
 
 #include "inst.h"
 #include "parser.h"
-#include "solver.h"
 #include "STAEngine.h"
 
 using std::pair;
@@ -59,7 +58,7 @@ double Solver::STAEngine::getDistance(size_t &inID, size_t &outID) const
     return -1;
 }
 
-void Solver::STAEngine::initEngine(const vector<vector<size_t>> &netList, const vector<Inst::Inst *> IDList)
+void Solver::STAEngine::initEngine(const vector<vector<size_t>> &netList, const vector<Inst::Inst *> &IDList)
 {
     assert(_ptrSolver != nullptr);
     // step1: initialize the variable
@@ -121,21 +120,40 @@ void Solver::STAEngine::initEngine(const vector<vector<size_t>> &netList, const 
 
 void Solver::STAEngine::propagateForward(const size_t &InPinIdBase, const size_t &InPinIdNext, double d)
 {
+    std::cout << "KK" << std::endl;
     list<size_t> outPinList = getOutPinRelated(InPinIdNext);
+    std::cout << "KKK" << std::endl;
     int posBase = binarySearch(_distanceList, InPinIdBase);
+    if (posBase == -1)
+    {
+        std::cout << "Alert: id " << InPinIdBase << " not found" << std::endl;
+    }
+
     int posNext = binarySearch(_distanceList, InPinIdNext);
     assert(posNext != -1);
     for (const auto &outID : outPinList)
     {
+        std::cout << "K" << std::endl;
         // step1: record this out Pin to the distance list of Base in pin
         int outIndex_base = binarySearch(_distanceList[posBase].second, outID);
-        if (outIndex_base != -1) // if this path already explored skip it
+        if (outIndex_base != -1) // if this path already explored
         {
-            continue;
+            // and new path is longer than former one, replace it
+            if (_distanceList[posBase].second[outIndex_base].second < d)
+            {
+                _distanceList[posBase].second[outIndex_base].second = d;
+            }
+            else
+            {
+                continue; // else skip it
+            }
         }
+        std::cout << "A" << std::endl;
         int outIndex_Next = binarySearch(_distanceList[posNext].second, outID);
+        std::cout << "B" << std::endl;
         if (outIndex_Next == -1) // not yet build the distance list for this path
         {
+            std::cout << "AA" << std::endl;
             pair<size_t, double> a;
             a.first = outID;
             a.second = 0;
@@ -147,23 +165,31 @@ void Solver::STAEngine::propagateForward(const size_t &InPinIdBase, const size_t
             outIndex_Next = binarySearch(_distanceList[posNext].second, outID);
         }
         // add out pin to the base pin
-        pair<size_t, double> disPair;
-        disPair.first = outID;
-        disPair.second = d;
-        _distanceList[posBase].second.push_back(disPair);
-        // sort it
-        std::sort(_distanceList[posBase].second.begin(), _distanceList[posBase].second.end(), [](pair<size_t, double> a, pair<size_t, double> b)
-                  {
-                      return a.first < b.first; // sort in acsending order
-                  });
+        if (outIndex_base == -1)
+        {
+            pair<size_t, double> disPair;
+            disPair.first = outID;
+            disPair.second = d;
+            _distanceList[posBase].second.push_back(disPair);
+            std::cout << "D" << std::endl;
+            // sort it
+            std::sort(_distanceList[posBase].second.begin(), _distanceList[posBase].second.end(), [](pair<size_t, double> a, pair<size_t, double> b)
+                      {
+                          return a.first < b.first; // sort in acsending order
+                      });
+        }
 
         // step2: recurrsively explore the in pin connect to this out pin
+        std::cout << "AAA" << std::endl;
         vector<size_t> nextInPin = _InPinList[getRelatedNet(outID)];
+        std::cout << "C" << std::endl;
         for (const auto &ID_next : nextInPin)
         {
             pair<double, double> outPos = getPinPosition(outID);
             pair<double, double> inPos = getPinPosition(ID_next);
+            std::cout << "CC" << std::endl;
             double dis = std::fabs(outPos.first - inPos.first) + std::fabs(outPos.second - inPos.second);
+            std::cout << "CCC" << std::endl;
             propagateForward(InPinIdBase, ID_next, d + dis);
         }
     }
@@ -173,7 +199,8 @@ bool Solver::STAEngine::isInPin(const size_t &id) const
 {
     if (_ptrSolver->_ID_to_instance[id]->getType() == Inst::INST_GATE)
     {
-        if (_ptrSolver->_Name_to_ID[id].find("/IN") != std::string::npos)
+        Inst::Gate *ptrGate = _ptrSolver->_GID_to_ptrGate_map[id - _ptrSolver->_GATE_OFFSET];
+        if (ptrGate->pinName[id - ptrGate->PIN_OFFSET].find("IN") != std::string::npos || ptrGate->pinName[id - ptrGate->PIN_OFFSET].find("in") != std::string::npos)
         {
             return true;
         }
@@ -185,7 +212,8 @@ bool Solver::STAEngine::isOutPin(const size_t &id) const
 {
     if (_ptrSolver->_ID_to_instance[id]->getType() == Inst::INST_GATE)
     {
-        if (_ptrSolver->_Name_to_ID[id].find("/OUT") != std::string::npos)
+        Inst::Gate *ptrGate = _ptrSolver->_GID_to_ptrGate_map[id - _ptrSolver->_GATE_OFFSET];
+        if (ptrGate->pinName[id - ptrGate->PIN_OFFSET].find("OUT") != std::string::npos || ptrGate->pinName[id - ptrGate->PIN_OFFSET].find("out") != std::string::npos)
         {
             return true;
         }
@@ -200,7 +228,7 @@ list<size_t> Solver::STAEngine::getInPinRelated(const size_t &id) const
     list<size_t> a;
     for (size_t i = 0; i < ptr->pinName.size(); i++)
     {
-        if (ptr->pinName[i].find("/IN") != std::string::npos)
+        if (ptr->pinName[i].find("IN") != std::string::npos || ptr->pinName[i].find("in") != std::string::npos)
         {
             a.push_back(i + ptr->PIN_OFFSET);
         }
@@ -215,7 +243,7 @@ list<size_t> Solver::STAEngine::getOutPinRelated(const size_t &id) const
     list<size_t> a;
     for (size_t i = 0; i < ptr->pinName.size(); i++)
     {
-        if (ptr->pinName[i].find("/OUT") != std::string::npos)
+        if (ptr->pinName[i].find("OUT") != std::string::npos || ptr->pinName[i].find("out") != std::string::npos)
         {
             a.push_back(i + ptr->PIN_OFFSET);
         }
