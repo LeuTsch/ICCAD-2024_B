@@ -63,7 +63,7 @@ namespace Inst
 
         // data part
         size_t gate_type;
-        vector<pair<double, double>> pinPosition;
+        vector<pair<double, double>> pinPosition; // store the pin global position, not relative to instance
         vector<string> pinName;
         size_t PIN_OFFSET; // ID - PINOFFSET = i-th pin
 

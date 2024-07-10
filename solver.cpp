@@ -1280,9 +1280,7 @@ pair<double, double> Solver::Solver::findPinPosition(const size_t &id) const
     if (_ID_to_instance[id]->getType() == Inst::InstType::INST_GATE)
     {
         Inst::Gate *ptr_gate = _GID_to_ptrGate_map[id - _GATE_OFFSET];
-        pair<double, double> pos = ptr_gate->getPosition();
-        pos.first += ptr_gate->pinPosition[id - ptr_gate->PIN_OFFSET].first;
-        pos.second += ptr_gate->pinPosition[id - ptr_gate->PIN_OFFSET].second;
+        pair<double, double> pos = ptr_gate->pinPosition[id - ptr_gate->PIN_OFFSET];
         return pos;
     }
     else
