@@ -83,6 +83,8 @@ namespace Inst
         {
             grouped = false;
             faninCone.clear();
+            outGate2Fanin.clear();
+            inGate2Fanin.clear();
             slack = 0;
         }
         FF_D(string, const pair<double, double>);
@@ -94,6 +96,10 @@ namespace Inst
         size_t FF_type;
         // size_t ID_to_Q;
         vector<size_t> faninCone;
+        vector<size_t> outGate2Fanin;  // store the gate out pin ID for the path to the fanin FF_Q in the same index in faninCone
+                                       // if two FF are connect directly, the id would be _ID_to_instance.size()
+        vector<size_t> inGate2Fanin;   // store the gate in pin ID for the path to the fanin FF_Q in the same index in faninCone
+                                       // if two FF are connect directly, the id would be _ID_to_instance.size()
         vector<size_t> grouped_member; // store the global ID for FF_D, not the position in FF_D_arr, and would include itself
                                        // this vector would have at least 1 element(itself)
         // function part
@@ -121,6 +127,8 @@ namespace Inst
         FF_Q()
         {
             fanoutCone.clear();
+            outGate2Fanout.clear();
+            inGate2Fanout.clear();
             grouped = false;
             slack = 0;
         }
@@ -133,6 +141,10 @@ namespace Inst
         size_t FF_type;
         // size_t ID_to_D;
         vector<size_t> fanoutCone;
+        vector<size_t> outGate2Fanout; // store the gate out pin ID for the path to the fanin FF_D in the same index in fanoutCone
+                                       // if two FF are connect directly, the id would be _ID_to_instance.size()
+        vector<size_t> inGate2Fanout;  // store the gate in pin ID for the path to the fanin FF_D in the same index in fanoutCone
+                                       // if two FF are connect directly, the id would be _ID_to_instance.size()
 
         // function part
         InstType getType() const { return INST_FF_Q; };

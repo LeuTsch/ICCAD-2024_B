@@ -351,11 +351,6 @@ void Solver::Solver::printOutput()
 void Solver::Solver::test()
 {
     // initSolver();
-    string a = "C9/IN";
-    size_t in = name2ID(a);
-    a = "C12/OUT";
-    size_t out = name2ID(a);
-    std::cout << _ptr_STAEngine->getDistance(in, out) << std::endl;
 }
 
 bool Solver::Solver::mbffCluster() // can add parameter to implement the Window-based sequence generation
@@ -366,9 +361,9 @@ bool Solver::Solver::mbffCluster() // can add parameter to implement the Window-
     return true;
 }
 
-vector<size_t> Solver::Solver::prePlace(vector<size_t> ff_group, pair<double, double> pos)
+vector<size_t> Solver::Solver::prePlace(const vector<size_t> &ff_group, size_t essential_ID, pair<double, double> pos)
 {
-    // let me know what function do you want it to be
+    // return the id get grouped
     vector<size_t> a;
     return a;
 }
@@ -1123,48 +1118,56 @@ void Solver::Solver::findFanin(const FF_D_ID &id)
             else if (_ID_to_instance[pinID]->getType() == Inst::InstType::INST_FF_Q)
             {
                 _FF_D_arr[id - _FF_D_OFFSET].faninCone.push_back(pinID);
+                _FF_D_arr[id - _FF_D_OFFSET].inGate2Fanin.push_back(_ID_to_instance.size());
+                _FF_D_arr[id - _FF_D_OFFSET].outGate2Fanin.push_back(_ID_to_instance.size());
             }
             else if (_ID_to_instance[pinID]->getType() == Inst::InstType::INST_GATE)
             {
-                findFaninRecur(id, pinID);
+                Inst::Gate *ptr_gate = _GID_to_ptrGate_map[pinID - _GATE_OFFSET];
+                if (ptr_gate->pinName[pinID - ptr_gate->PIN_OFFSET].find("OUT") != std::string::npos || ptr_gate->pinName[pinID - ptr_gate->PIN_OFFSET].find("out") != std::string::npos)
+                {
+                    findFaninRecur(id, pinID, pinID);
+                }
             }
         }
     }
 }
 
-void Solver::Solver::findFaninRecur(const FF_D_ID &ID_ffd, const Gate_ID &gateID)
+void Solver::Solver::findFaninRecur(const FF_D_ID &ID_ffd, const Gate_ID &gateID, const Gate_ID &baseGID)
 {
     Inst::Gate *ptr_gate = _GID_to_ptrGate_map[gateID - _GATE_OFFSET];
-    vector<size_t> outputPinID;
-    outputPinID.reserve(ptr_gate->pinName.size());
+    vector<size_t> inputPinID;
+    inputPinID.reserve(ptr_gate->pinName.size());
     for (size_t i = 0; i < ptr_gate->pinName.size(); i++)
     {
-        if (ptr_gate->pinName[i].find("IN") == std::string::npos)
+        if (ptr_gate->pinName[i].find("IN") != std::string::npos || ptr_gate->pinName[i].find("in") != std::string::npos)
         {
-            outputPinID.push_back(i + ptr_gate->PIN_OFFSET);
+            inputPinID.push_back(i + ptr_gate->PIN_OFFSET);
         }
     }
     for (const auto &NetID : ptr_gate->getRelatedNet())
     {
-        bool isOutputNet = false;
+        bool isInputNet = false;
+        size_t inpin;
         for (const auto &pinID : _NetList[NetID])
         {
             // check whether _NetList[NetID] is outputPin's Net
-            for (const auto &outPinID : outputPinID)
+            for (const auto &inPinID : inputPinID)
             {
-                if (outPinID == pinID)
+                if (inPinID == pinID)
                 {
-                    isOutputNet = true;
+                    isInputNet = true;
+                    inpin = pinID;
                     break;
                 }
             }
             // if is outputNet ignore it
-            if (isOutputNet)
+            if (isInputNet)
             {
                 break;
             }
         }
-        if (isOutputNet)
+        if (!isInputNet)
         {
             continue;
         }
@@ -1172,7 +1175,7 @@ void Solver::Solver::findFaninRecur(const FF_D_ID &ID_ffd, const Gate_ID &gateID
         {
             for (const auto &pinID : _NetList[NetID])
             {
-                if ((pinID >= _GATE_OFFSET) && (pinID < (_GATE_OFFSET + ptr_gate->pinName.size())))
+                if ((pinID >= ptr_gate->PIN_OFFSET) && (pinID < (ptr_gate->PIN_OFFSET + ptr_gate->pinName.size())))
                 {
                     // if pinID is the input of the gate
                     continue;
@@ -1180,10 +1183,16 @@ void Solver::Solver::findFaninRecur(const FF_D_ID &ID_ffd, const Gate_ID &gateID
                 if (_ID_to_instance[pinID]->getType() == Inst::InstType::INST_FF_Q)
                 {
                     _FF_D_arr[ID_ffd - _FF_D_OFFSET].faninCone.push_back(pinID);
+                    _FF_D_arr[ID_ffd - _FF_D_OFFSET].inGate2Fanin.push_back(inpin);
+                    _FF_D_arr[ID_ffd - _FF_D_OFFSET].outGate2Fanin.push_back(baseGID);
                 }
                 else if (_ID_to_instance[pinID]->getType() == Inst::InstType::INST_GATE)
                 {
-                    findFaninRecur(ID_ffd, pinID);
+                    Inst::Gate *ptr = _GID_to_ptrGate_map[pinID - _GATE_OFFSET];
+                    if (ptr->pinName[pinID - ptr->PIN_OFFSET].find("OUT") != std::string::npos || ptr->pinName[pinID - ptr->PIN_OFFSET].find("out") != std::string::npos)
+                    {
+                        findFaninRecur(ID_ffd, pinID, baseGID);
+                    }
                 }
             }
         }
@@ -1208,23 +1217,25 @@ void Solver::Solver::findFanout(const FF_Q_ID &id)
             else if (_ID_to_instance[pinID]->getType() == Inst::InstType::INST_FF_D)
             {
                 _FF_Q_arr[id - _FF_Q_OFFSET].fanoutCone.push_back(pinID);
+                _FF_Q_arr[id - _FF_Q_OFFSET].inGate2Fanout.push_back(_ID_to_instance.size());
+                _FF_Q_arr[id - _FF_Q_OFFSET].outGate2Fanout.push_back(_ID_to_instance.size());
             }
             else if (_ID_to_instance[pinID]->getType() == Inst::InstType::INST_GATE)
             {
-                findFanoutRecur(id, pinID);
+                findFanoutRecur(id, pinID, pinID);
             }
         }
     }
 }
 
-void Solver::Solver::findFanoutRecur(const FF_Q_ID &ID_ffq, const Gate_ID &gateID)
+void Solver::Solver::findFanoutRecur(const FF_Q_ID &ID_ffq, const Gate_ID &gateID, const Gate_ID &baseGID)
 {
     Inst::Gate *ptr_gate = _GID_to_ptrGate_map[gateID - _GATE_OFFSET];
     vector<size_t> outputPinID;
     outputPinID.reserve(ptr_gate->pinName.size());
     for (size_t i = 0; i < ptr_gate->pinName.size(); i++)
     {
-        if (ptr_gate->pinName[i].find("IN") == std::string::npos)
+        if (ptr_gate->pinName[i].find("IN") == std::string::npos || ptr_gate->pinName[i].find("in") == std::string::npos)
         {
             outputPinID.push_back(i + ptr_gate->PIN_OFFSET);
         }
@@ -1232,6 +1243,7 @@ void Solver::Solver::findFanoutRecur(const FF_Q_ID &ID_ffq, const Gate_ID &gateI
     for (const auto &NetID : ptr_gate->getRelatedNet())
     {
         bool isOutputNet = false;
+        size_t outpin;
         for (const auto &pinID : _NetList[NetID])
         {
             // check whether _NetList[NetID] is outputPin's Net
@@ -1240,6 +1252,7 @@ void Solver::Solver::findFanoutRecur(const FF_Q_ID &ID_ffq, const Gate_ID &gateI
                 if (outPinID == pinID)
                 {
                     isOutputNet = true;
+                    outpin = pinID;
                     break;
                 }
             }
@@ -1257,7 +1270,7 @@ void Solver::Solver::findFanoutRecur(const FF_Q_ID &ID_ffq, const Gate_ID &gateI
         {
             for (const auto &pinID : _NetList[NetID])
             {
-                if ((pinID >= _GATE_OFFSET) && (pinID < (_GATE_OFFSET + ptr_gate->pinName.size())))
+                if ((pinID >= ptr_gate->PIN_OFFSET) && (pinID < (ptr_gate->PIN_OFFSET + ptr_gate->pinName.size())))
                 {
                     // if pinID is the pin of the gate
                     continue;
@@ -1265,10 +1278,12 @@ void Solver::Solver::findFanoutRecur(const FF_Q_ID &ID_ffq, const Gate_ID &gateI
                 if (_ID_to_instance[pinID]->getType() == Inst::InstType::INST_FF_D)
                 {
                     _FF_Q_arr[ID_ffq - _FF_Q_OFFSET].fanoutCone.push_back(pinID);
+                    _FF_Q_arr[ID_ffq - _FF_Q_OFFSET].inGate2Fanout.push_back(baseGID);
+                    _FF_Q_arr[ID_ffq - _FF_Q_OFFSET].outGate2Fanout.push_back(outpin);
                 }
                 else if (_ID_to_instance[pinID]->getType() == Inst::InstType::INST_GATE)
                 {
-                    findFaninRecur(ID_ffq, pinID);
+                    findFaninRecur(ID_ffq, pinID, baseGID);
                 }
             }
         }

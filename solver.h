@@ -69,8 +69,8 @@ namespace Solver
 
         // function part
         bool mbffCluster();
-        vector<size_t> prePlace(vector<FF_D_ID>, pair<double, double>); // return the FF_D_ID be grouped
-        void slackDistribute(const double);                             // should be called before mbff clustering
+        vector<size_t> prePlace(const vector<FF_D_ID> &, size_t, pair<double, double>); // return the FF_D_ID be grouped
+        void slackDistribute(const double);                                             // should be called before mbff clustering
         void legalize();
 
         // interface
@@ -97,9 +97,9 @@ namespace Solver
 
         // the function should only be called in initialization
         void findFanin(const FF_D_ID &);
-        void findFaninRecur(const FF_D_ID &, const Gate_ID &);
+        void findFaninRecur(const FF_D_ID &, const Gate_ID &, const Gate_ID &);
         void findFanout(const FF_Q_ID &);
-        void findFanoutRecur(const FF_Q_ID &, const Gate_ID &);
+        void findFanoutRecur(const FF_Q_ID &, const Gate_ID &, const Gate_ID &);
     };
 }
 #endif

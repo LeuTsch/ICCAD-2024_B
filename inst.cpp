@@ -46,6 +46,8 @@ Inst::FF_D::FF_D(string name, const pair<double, double> pos) : _Name_origin(nam
 {
     faninCone.clear();
     grouped_member.clear();
+    outGate2Fanin.clear();
+    inGate2Fanin.clear();
     setPosition(pos.first, pos.second);
     _Name_now = "NEW" + name;
     grouped = false;
@@ -56,12 +58,16 @@ Inst::FF_D::~FF_D()
 {
     faninCone.clear();
     grouped_member.clear();
+    outGate2Fanin.clear();
+    inGate2Fanin.clear();
     _Name_now.clear();
 }
 
 Inst::FF_Q::FF_Q(string name, const pair<double, double> pos) : _Name_origin(name)
 {
     fanoutCone.clear();
+    outGate2Fanout.clear();
+    inGate2Fanout.clear();
     setPosition(pos.first, pos.second);
     _Name_now = "NEW" + name;
     grouped = false;
@@ -73,4 +79,6 @@ Inst::FF_Q::~FF_Q()
 {
     fanoutCone.clear();
     _Name_now.clear();
+    outGate2Fanout.clear();
+    inGate2Fanout.clear();
 }
