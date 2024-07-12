@@ -364,8 +364,154 @@ bool Solver::Solver::mbffCluster() // can add parameter to implement the Window-
 vector<size_t> Solver::Solver::prePlace(const vector<size_t> &ff_group, size_t essential_ID, pair<double, double> pos)
 {
     // return the id get grouped
-    vector<size_t> a;
-    return a;
+    vector<size_t> ID_group;
+    ID_group.reserve(ff_group.size());
+    ID_group.push_back(essential_ID);
+
+    // step1: choose the ff size from ff lib
+    int maxSize = 0;
+    size_t fftype = 0;
+    // here we choose the first FF with largest available size in the ff lib
+    for (size_t i = 0; i < _ptr_Parser->_flipflopLib.size(); i++)
+    {
+        if (_ptr_Parser->_flipflopLib[i].Bit > maxSize && _ptr_Parser->_flipflopLib[i].Bit <= int(ff_group.size()))
+        {
+            maxSize = _ptr_Parser->_flipflopLib[i].Bit;
+            fftype = i;
+        }
+    }
+
+    // step2: choose which ff be grouped
+    // here we randomly choose other maxsize - 1 ff to be group
+    for (size_t i = 0; int(i) < maxSize - 1;)
+    {
+        if (ff_group[i] != essential_ID)
+        {
+            ID_group.push_back(ff_group[i]);
+            i++;
+        }
+    }
+
+    // step3: place it and release slack
+    pair<double, double> center(0, 0);
+    vector<pair<size_t, double>> DpinHeight;
+    vector<pair<size_t, double>> ID2HeightMap;
+    ID2HeightMap.reserve(maxSize);
+    DpinHeight.reserve(maxSize);
+    // calculate the center of pin
+    for (size_t i = 0; i < _ptr_Parser->_flipflopLib[fftype].PinCrdnate.size(); i++)
+    {
+        if (_ptr_Parser->_flipflopLib[fftype].PinName[i].find("CLK") != std::string::npos || _ptr_Parser->_flipflopLib[fftype].PinName[i].find("clk") != std::string::npos)
+        {
+            continue;
+        }
+        if (_ptr_Parser->_flipflopLib[fftype].PinName[i][0] == 'D' || _ptr_Parser->_flipflopLib[fftype].PinName[i][0] == 'd')
+        {
+            pair<size_t, double> id2yMap;
+            id2yMap.first = i;
+            id2yMap.second = _ptr_Parser->_flipflopLib[fftype].PinCrdnate[i].second;
+            DpinHeight.push_back(id2yMap);
+        }
+        center.first += _ptr_Parser->_flipflopLib[fftype].PinCrdnate[i].first / maxSize;
+        center.second += _ptr_Parser->_flipflopLib[fftype].PinCrdnate[i].second / maxSize;
+    }
+    // initialize ID2HeightMap
+    for (size_t i = 0; int(i) < maxSize; i++)
+    {
+        pair<size_t, double> id2yMap;
+        id2yMap.first = i;
+        id2yMap.second = findPinPosition(ID_group[i]).second;
+        ID2HeightMap.push_back(id2yMap);
+    }
+    // sort the grouped ffs and D pins with their y pos
+    std::sort(ID2HeightMap.begin(), ID2HeightMap.end(), [](pair<size_t, double> a, pair<size_t, double> b)
+              {
+                  return a.second < b.second; // sort in acsending order
+              });
+    std::sort(DpinHeight.begin(), DpinHeight.end(), [](pair<size_t, double> a, pair<size_t, double> b)
+              {
+                  return a.second < b.second; // sort in acsending order
+              });
+    // assign the position to each pin according to their order of height
+    // FFName = instanceName of the first pin/
+    string FFName = _ID_to_instance[ID2HeightMap[0].first]->getName().substr(0, _ID_to_instance[ID2HeightMap[0].first]->getName().find('/') + 1);
+    for (size_t i = 0; int(i) < maxSize; i++)
+    {
+        size_t FFid = ID2HeightMap[i].first;
+        size_t pinID = DpinHeight[i].first;
+        Inst::FF_D *ptr_FF_D = &_FF_D_arr[FFid - _FF_D_OFFSET];
+        string pinName = _ptr_Parser->_flipflopLib[fftype].PinName[pinID];
+        pair<double, double> Pin2CenterDis = _ptr_Parser->_flipflopLib[fftype].PinCrdnate[pinID];
+        Pin2CenterDis.first -= center.first;
+        Pin2CenterDis.second -= center.second;
+        // set the information for FF_D
+        ptr_FF_D->setName(FFName + pinName);
+        ptr_FF_D->setPosition(pos.first + Pin2CenterDis.first, pos.second + Pin2CenterDis.second);
+        ptr_FF_D->grouped_member = ID_group;
+        ptr_FF_D->grouped = true;
+        ptr_FF_D->FF_type = fftype;
+        // set the information for FF_Q
+        Inst::FF_Q *ptr_FF_Q = &_FF_Q_arr[FFid - _FF_D_OFFSET];
+        if (pinName[0] == 'D')
+        {
+            pinName[0] = 'Q';
+        }
+        else
+        {
+            pinName[0] = 'q';
+        }
+        for (size_t j = 0; j < _ptr_Parser->_flipflopLib[fftype].PinName.size(); j++)
+        {
+            if (_ptr_Parser->_flipflopLib[fftype].PinName[j] == pinName)
+            {
+                pinID = j;
+                break;
+            }
+        }
+        Pin2CenterDis = _ptr_Parser->_flipflopLib[fftype].PinCrdnate[pinID];
+        Pin2CenterDis.first -= center.first;
+        Pin2CenterDis.second -= center.second;
+        ptr_FF_Q->setName(FFName + pinName);
+        ptr_FF_Q->setPosition(pos.first + Pin2CenterDis.first, pos.second + Pin2CenterDis.second);
+        ptr_FF_Q->grouped = true;
+        ptr_FF_Q->FF_type = fftype;
+    }
+
+    // release slack to connected ff
+    for (const auto &id : ID_group)
+    {
+        Inst::FF_D *ptr_FF_D = &_FF_D_arr[id - _FF_D_OFFSET];
+        for (size_t i = 0; i < ptr_FF_D->faninCone.size(); i++)
+        {
+            pair<double, double> OriPos = ptr_FF_D->getOriPosition();
+            pair<double, double> NowPos = ptr_FF_D->getPosition();
+            pair<double, double> GatePinPos = findPinPosition(ptr_FF_D->outGate2Fanin[i]);
+            double Oridis = std::fabs(OriPos.first - GatePinPos.first) + std::fabs(OriPos.second - GatePinPos.second);
+            double Nowdis = std::fabs(NowPos.first - GatePinPos.first) + std::fabs(NowPos.second - GatePinPos.second);
+            double deltaSlack = (Nowdis - Oridis) / _ptr_Parser->_alpha;
+            if (_FF_Q_arr[ptr_FF_D->faninCone[i] - _FF_Q_OFFSET].slack > ptr_FF_D->slack - deltaSlack)
+            {
+                _FF_Q_arr[ptr_FF_D->faninCone[i] - _FF_Q_OFFSET].slack = ptr_FF_D->slack - deltaSlack;
+            }
+        }
+
+        Inst::FF_Q *ptr_FF_Q = &_FF_Q_arr[id - _FF_D_OFFSET];
+        for (size_t i = 0; i < ptr_FF_Q->fanoutCone.size(); i++)
+        {
+            pair<double, double> OriPos = ptr_FF_Q->getOriPosition();
+            pair<double, double> NowPos = ptr_FF_Q->getPosition();
+            pair<double, double> GatePinPos = findPinPosition(ptr_FF_Q->inGate2Fanout[i]);
+            double Oridis = std::fabs(OriPos.first - GatePinPos.first) + std::fabs(OriPos.second - GatePinPos.second);
+            double Nowdis = std::fabs(NowPos.first - GatePinPos.first) + std::fabs(NowPos.second - GatePinPos.second);
+            double deltaSlack = (Nowdis - Oridis) / _ptr_Parser->_alpha;
+            if (_FF_D_arr[ptr_FF_Q->fanoutCone[i] - _FF_D_OFFSET].slack > _FF_D_arr[ptr_FF_Q->fanoutCone[i] - _FF_D_OFFSET].getOriSlack() - deltaSlack)
+            {
+                _FF_D_arr[ptr_FF_Q->fanoutCone[i] - _FF_D_OFFSET].slack = _FF_D_arr[ptr_FF_Q->fanoutCone[i] - _FF_D_OFFSET].getOriSlack() - deltaSlack;
+            }
+        }
+    }
+
+    return ID_group;
 }
 
 void Solver::Solver::legalize()
