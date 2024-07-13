@@ -104,10 +104,18 @@ void Solver::STAEngine::initEngine(const vector<vector<size_t>> &netList, const 
               {
                   return a.first < b.first; // sort in acsending order
               });
+    // initialize _checkList
+    _checkList.clear();
+    _checkList.reserve(IDList.size());
+    for (size_t i = 0; i < IDList.size(); i++)
+    {
+        _checkList.push_back(false);
+    }
 
     // step2: propagate the distance from the in of gate which connect to Q pin
     for (size_t i = 0; i < netList.size(); i++)
     {
+        std::cout << "start to propagate net " << i << std::endl;
         if (_OutPinList[i].size() == 0)
         {
             for (const auto &inPinID : _InPinList[i])
@@ -207,7 +215,7 @@ bool Solver::STAEngine::isOutPin(const size_t &id) const
 
 list<size_t> Solver::STAEngine::getInPinRelated(const size_t &id) const
 {
-    assert(isOutPin(id));
+    // assert(isOutPin(id));
     Inst::Gate *ptr = _ptrSolver->_GID_to_ptrGate_map[id - _ptrSolver->_GATE_OFFSET];
     list<size_t> a;
     for (size_t i = 0; i < ptr->pinName.size(); i++)
@@ -222,7 +230,7 @@ list<size_t> Solver::STAEngine::getInPinRelated(const size_t &id) const
 
 list<size_t> Solver::STAEngine::getOutPinRelated(const size_t &id) const
 {
-    assert(isInPin(id));
+    // assert(isInPin(id));
     Inst::Gate *ptr = _ptrSolver->_GID_to_ptrGate_map[id - _ptrSolver->_GATE_OFFSET];
     list<size_t> a;
     for (size_t i = 0; i < ptr->pinName.size(); i++)

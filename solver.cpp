@@ -351,6 +351,9 @@ void Solver::Solver::printOutput()
 void Solver::Solver::test()
 {
     // initSolver();
+    size_t inID = _Name_to_ID["C9/IN"];
+    size_t outID = _Name_to_ID["C12/OUT"];
+    std::cout << _ptr_STAEngine->getDistance(inID, outID) << std::endl;
 }
 
 bool Solver::Solver::mbffCluster() // can add parameter to implement the Window-based sequence generation

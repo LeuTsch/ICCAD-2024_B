@@ -33,6 +33,7 @@ namespace Solver
         vector<vector<size_t>> _InPinList;  // record the In Pin in the i-th Net
         vector<vector<size_t>> _OutPinList; // record the Out Pin in the i-th Net
         Solver *_ptrSolver;
+        vector<bool> _checkList; // check for whether the pin got explored
 
         // auxilury function
         void propagateForward(const size_t &, const size_t &, double);
@@ -40,8 +41,8 @@ namespace Solver
         // function need to be rewrited with the data structures used
         bool isInPin(const size_t &) const;                  // see whether it is an input pin of gate
         bool isOutPin(const size_t &) const;                 // see whether it is an output pin of gate
-        list<size_t> getInPinRelated(const size_t &) const;  // get the input pin in the same gate of an output pin
-        list<size_t> getOutPinRelated(const size_t &) const; // get the output pin in the same gate
+        list<size_t> getInPinRelated(const size_t &) const;  // get the input pin in the same gate (may include itself)
+        list<size_t> getOutPinRelated(const size_t &) const; // get the output pin in the same gate (may include itself)
         size_t getRelatedNet(const size_t &) const;          // get the NetID relate to the pin
         pair<double, double> getPinPosition(const size_t &) const;
     };
