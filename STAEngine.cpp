@@ -5,6 +5,7 @@
 #include <assert.h>
 #include <algorithm>
 #include <cmath>
+#include <map>
 
 #include "inst.h"
 #include "parser.h"
@@ -42,7 +43,7 @@ int binarySearch(const Container &container, const T &key)
     return -1; // Key not found
 }
 
-double Solver::STAEngine::getDistance(size_t &inID, size_t &outID) const
+double Solver::STAEngine::getDistance(const size_t &inID, const size_t &outID) const
 {
     assert(isInPin(inID));
     int inIDPos = binarySearch(_distanceList, inID);
@@ -104,6 +105,51 @@ void Solver::STAEngine::initEngine(const vector<vector<size_t>> &netList, const 
               {
                   return a.first < b.first; // sort in acsending order
               });
+    // initialize _InPin2PositionMap and _isOutPinCritical
+    for (size_t i = 0; i < IDList.size(); i++)
+    {
+        if (isInPin(i))
+        {
+            pair<size_t, int> initPair;
+            initPair.first = i;
+            initPair.second = -1;
+            _InPin2PositionMap.insert(initPair);
+        }
+        else if (isOutPin(i))
+        {
+            pair<size_t, bool> initPair;
+            initPair.first = i;
+            initPair.second = false;
+            _isOutPinCritical.insert(initPair);
+        }
+    }
+    for (size_t i = 0; i < _distanceList.size(); i++)
+    {
+        _InPin2PositionMap[_distanceList[i].first] = int(i);
+    }
+    for (size_t i = 0; i < netList.size(); i++)
+    {
+        if (_OutPinList[i].size() > 0)
+        {
+            bool haveFF_D = false;
+            for (const auto &pinID : netList[i])
+            {
+                if (isFF_D(pinID))
+                {
+                    haveFF_D = true;
+                    break;
+                }
+            }
+            if (haveFF_D)
+            {
+                for (const auto &outID : _OutPinList[i])
+                {
+                    _isOutPinCritical[outID] = true;
+                }
+            }
+        }
+    }
+
     // initialize _checkList
     _checkList.clear();
     _checkList.reserve(IDList.size());
@@ -115,64 +161,123 @@ void Solver::STAEngine::initEngine(const vector<vector<size_t>> &netList, const 
     // step2: propagate the distance from the in of gate which connect to Q pin
     for (size_t i = 0; i < netList.size(); i++)
     {
-        std::cout << "start to propagate net " << i << std::endl;
+        // std::cout << "start to propagate net " << i << std::endl;
         if (_OutPinList[i].size() == 0)
         {
             for (const auto &inPinID : _InPinList[i])
             {
-                propagateForward(inPinID, inPinID, 0);
+                list<size_t> l;
+                l.push_back(inPinID);
+                list<double> emptyList;
+                emptyList.clear();
+                propagateForward(l, inPinID, 0, emptyList);
             }
         }
     }
 }
 
-void Solver::STAEngine::propagateForward(const size_t &InPinIdBase, const size_t &InPinIdNext, double d)
+void Solver::STAEngine::propagateForward(list<size_t> InPinIdList, const size_t &InPinIdNext, double d, list<double> disList)
 {
+    //  if the InPinIdNext has been explored, directly add its fanout to the Inpin passed
+    if (_checkList[InPinIdNext])
+    {
+        size_t InPinIdBase;
+        list<double>::iterator iteDis = disList.begin();
+        int posNext = binarySearch(_distanceList, InPinIdNext);
+        for (const auto &inID : InPinIdList)
+        {
+            list<size_t> inPinList = getInPinRelated(inID);
+            for (const auto &relatedInID : inPinList)
+            {
+                InPinIdBase = relatedInID;
+                int posBase = binarySearch(_distanceList, InPinIdBase);
+                if (posBase == -1) // if the pin doesn't include in any net
+                {
+                    continue;
+                }
+                for (const auto &DisPair : _distanceList[posNext].second)
+                {
+                    int outIndex_base = binarySearch(_distanceList[posBase].second, DisPair.first);
+                    if (outIndex_base != -1) // if this path already explored
+                    {
+                        // and new path is longer than former one, replace it
+                        if (_distanceList[posBase].second[outIndex_base].second < d - *iteDis)
+                        {
+                            _distanceList[posBase].second[outIndex_base].second = d - *iteDis;
+                        }
+                        continue;
+                    }
+                    // else add out pin to the base pin
+                    pair<size_t, double> disPair;
+                    disPair.first = DisPair.first;
+                    disPair.second = d;
+                    _distanceList[posBase].second.push_back(disPair);
+                    // sort it
+                    std::sort(_distanceList[posBase].second.begin(), _distanceList[posBase].second.end(), [](pair<size_t, double> a, pair<size_t, double> b)
+                              {
+                                  return a.first < b.first; // sort in acsending order
+                              });
+                }
+            }
+            iteDis++;
+        }
+        return;
+    }
+
+    // if the InPinIdNext hasn't been explored
+    if (InPinIdList.front() != InPinIdNext)
+    {
+        InPinIdList.push_back(InPinIdNext);
+    }
+    disList.push_back(d);
     list<size_t> outPinList = getOutPinRelated(InPinIdNext);
-    int posBase = binarySearch(_distanceList, InPinIdBase);
     int posNext = binarySearch(_distanceList, InPinIdNext);
     assert(posNext != -1);
     for (const auto &outID : outPinList)
     {
         // step1: record this out Pin to the distance list of Base in pin
-        int outIndex_base = binarySearch(_distanceList[posBase].second, outID);
-        if (outIndex_base != -1) // if this path already explored
+        // if the out pin is connected to FF, record it
+        if (_isOutPinCritical.at(outID))
         {
-            // and new path is longer than former one, replace it
-            if (_distanceList[posBase].second[outIndex_base].second < d)
+            size_t InPinIdBase;
+            list<double>::iterator iteDis = disList.begin();
+            for (const auto &inID : InPinIdList)
             {
-                _distanceList[posBase].second[outIndex_base].second = d;
+                list<size_t> inPinList = getInPinRelated(inID);
+                for (const auto &relatedInID : inPinList)
+                {
+                    InPinIdBase = relatedInID;
+                    int posBase = binarySearch(_distanceList, InPinIdBase);
+                    if (posBase == -1) // if the pin is not include in any Net
+                    {
+                        continue;
+                    }
+                    int outIndex_base = binarySearch(_distanceList[posBase].second, outID);
+                    if (outIndex_base != -1) // if this path already explored
+                    {
+                        // and new path is longer than former one, replace it
+                        if (_distanceList[posBase].second[outIndex_base].second < d - *iteDis)
+                        {
+                            _distanceList[posBase].second[outIndex_base].second = d - *iteDis;
+                        }
+                        continue;
+                    }
+                    // add out pin to the base pin
+                    if (outIndex_base == -1)
+                    {
+                        pair<size_t, double> disPair;
+                        disPair.first = outID;
+                        disPair.second = d;
+                        _distanceList[posBase].second.push_back(disPair);
+                        // sort it
+                        std::sort(_distanceList[posBase].second.begin(), _distanceList[posBase].second.end(), [](pair<size_t, double> a, pair<size_t, double> b)
+                                  {
+                                      return a.first < b.first; // sort in acsending order
+                                  });
+                    }
+                }
+                iteDis++;
             }
-            else
-            {
-                continue; // else skip it
-            }
-        }
-        int outIndex_Next = binarySearch(_distanceList[posNext].second, outID);
-        if (outIndex_Next == -1) // not yet build the distance list for this path
-        {
-            pair<size_t, double> a;
-            a.first = outID;
-            a.second = 0;
-            _distanceList[posNext].second.push_back(a);
-            std::sort(_distanceList[posNext].second.begin(), _distanceList[posNext].second.end(), [](pair<size_t, double> a, pair<size_t, double> b)
-                      {
-                          return a.first < b.first; // sort in acsending order
-                      });
-            outIndex_Next = binarySearch(_distanceList[posNext].second, outID);
-        }
-        // add out pin to the base pin
-        if (outIndex_base == -1)
-        {
-            pair<size_t, double> disPair;
-            disPair.first = outID;
-            disPair.second = d;
-            _distanceList[posBase].second.push_back(disPair);
-            // sort it
-            std::sort(_distanceList[posBase].second.begin(), _distanceList[posBase].second.end(), [](pair<size_t, double> a, pair<size_t, double> b)
-                      {
-                          return a.first < b.first; // sort in acsending order
-                      });
         }
 
         // step2: recurrsively explore the in pin connect to this out pin
@@ -182,8 +287,14 @@ void Solver::STAEngine::propagateForward(const size_t &InPinIdBase, const size_t
             pair<double, double> outPos = getPinPosition(outID);
             pair<double, double> inPos = getPinPosition(ID_next);
             double dis = std::fabs(outPos.first - inPos.first) + std::fabs(outPos.second - inPos.second);
-            propagateForward(InPinIdBase, ID_next, d + dis);
+            propagateForward(InPinIdList, ID_next, d + dis, disList);
         }
+    }
+    //  step3: mark the input pin of gate to be explored
+    list<size_t> inPinList = getInPinRelated(InPinIdNext);
+    for (const auto &id : inPinList)
+    {
+        _checkList[id] = true;
     }
 }
 
@@ -209,6 +320,15 @@ bool Solver::STAEngine::isOutPin(const size_t &id) const
         {
             return true;
         }
+    }
+    return false;
+}
+
+bool Solver::STAEngine::isFF_D(const size_t &id) const
+{
+    if (_ptrSolver->_ID_to_instance[id]->getType() == Inst::INST_FF_D)
+    {
+        return true;
     }
     return false;
 }
