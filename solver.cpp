@@ -422,7 +422,7 @@ vector<size_t> Solver::Solver::prePlace(const vector<size_t> &ff_group, size_t e
     for (size_t i = 0; int(i) < maxSize; i++)
     {
         pair<size_t, double> id2yMap;
-        id2yMap.first = i;
+        id2yMap.first = ID_group[i];
         id2yMap.second = findPinPosition(ID_group[i]).second;
         ID2HeightMap.push_back(id2yMap);
     }
