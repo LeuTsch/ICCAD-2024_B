@@ -39,7 +39,7 @@ namespace Solver
         void setSTAEnginePtr(STAEngine *ptr) { _ptr_STAEngine = ptr; };
         void initSolver();
         void solve();
-        void printOutput();
+        void printOutput(const string &);
         void test(); // do whatever test you want here
 
         // friend class declaration

@@ -164,6 +164,7 @@ void Solver::STAEngine::initEngine(const vector<vector<size_t>> &netList, const 
         // std::cout << "start to propagate net " << i << std::endl;
         if (_OutPinList[i].size() == 0)
         {
+            // std::cout << "start to propagate net " << i << std::endl;
             for (const auto &inPinID : _InPinList[i])
             {
                 list<size_t> l;

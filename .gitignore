@@ -33,6 +33,7 @@
 
 # vscode setting
 .vscode*
+vscode* ICCAD-2024_B
 */.vscode
 main
 .depend.mak

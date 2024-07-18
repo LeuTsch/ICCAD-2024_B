@@ -94,6 +94,7 @@ namespace Inst
         bool grouped;
         double slack;
         size_t FF_type;
+        size_t OriFF_type;
         // size_t ID_to_Q;
         vector<size_t> faninCone;
         vector<size_t> outGate2Fanin;  // store the gate out pin ID for the path to the fanin FF_Q in the same index in faninCone

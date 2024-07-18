@@ -13,7 +13,7 @@ int main(int argc, char *argv[])
     clock_t a, b;
     a = clock();
     static Parse::Parser parser;
-    for (int i = 1; i < argc; ++i)
+    for (int i = 1; i < 2; ++i)
     {
 
         // read the input file
@@ -30,9 +30,10 @@ int main(int argc, char *argv[])
     solver.initSolver();
     a = clock();
     cout << "Time for initialize solver: " << (a - b) << " sec" << endl;
-    solver.test();
+    solver.printOutput("AAA");
     b = clock();
     cout << "Time for legal and output: " << (b - a) << " sec" << endl;
+    solver.test();
 
     return 0;
 }

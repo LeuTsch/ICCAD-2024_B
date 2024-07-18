@@ -7,6 +7,8 @@
 #include <algorithm>
 #include <map>
 #include <list>
+#include <fstream>
+#include <iomanip>
 
 #include "inst.h"
 #include "solver.h"
@@ -70,6 +72,7 @@ void Solver::Solver::initSolver()
                         position.second = instance.y + _ptr_Parser->_flipflopLib[i].PinCrdnate[k].second;
                         Inst::FF_D FF_D(nameFFbit + _ptr_Parser->_flipflopLib[i].PinName[k], position);
                         FF_D.FF_type = i;
+                        FF_D.OriFF_type = i;
                         _FF_D_arr.push_back(FF_D);
                         // search for correspomding Q
                         for (size_t j = 0; j < _ptr_Parser->_flipflopLib[i].PinName.size(); j++)
@@ -335,17 +338,90 @@ void Solver::Solver::solve()
     */
 }
 
-void Solver::Solver::printOutput()
+void Solver::Solver::printOutput(const string &outFileName)
 {
-    /*
-    TODO: output
-    */
-    /*for (size_t i = 0; i < _FF_D_arr.size(); i++)
+    // step1: calculate how many instance need to be output
+    vector<bool> isChecked(_FF_D_arr.size(), false);
+    int instNum = 0;
+    for (size_t i = 0; i < _FF_D_arr.size(); i++)
     {
-        pair<double, double> pos = getFFPosition(&_FF_D_arr[i]);
-        string name = _FF_D_arr[i].getName();
-        std::cout << name << " " << pos.first << " " << pos.second << std::endl;
-    }*/
+        if (isChecked[i])
+        {
+            continue;
+        }
+        instNum++;
+        for (const auto &memberID : _FF_D_arr[i].grouped_member)
+        {
+            size_t id = memberID - _FF_D_OFFSET;
+            if (id != i)
+            {
+                isChecked[id] = true;
+            }
+        }
+    }
+
+    // step2: output the file
+    // reset the checked list
+    for (size_t i = 0; i < isChecked.size(); i++)
+    {
+        isChecked[i] = false;
+    }
+    // start to output
+    std::fstream outputFile;
+    outputFile.open(outFileName, std::fstream::out);
+    outputFile << std::setprecision(15);
+    outputFile << "CellInst " << instNum << "\n";
+    // output the Inst list
+    for (size_t i = 0; i < _FF_D_arr.size(); i++)
+    {
+        if (isChecked[i])
+        {
+            continue;
+        }
+        string instName = _FF_D_arr[i].getName().substr(0, _FF_D_arr[i].getName().find('/'));
+        pair<double, double> position = getFFPosition(&_FF_D_arr[i]);
+        outputFile << "Inst " << instName << " " << _ptr_Parser->_flipflopLib[_FF_D_arr[i].FF_type].Name
+                   << " " << position.first << " " << position.second << "\n";
+        for (const auto &memberID : _FF_D_arr[i].grouped_member)
+        {
+            size_t id = memberID - _FF_D_OFFSET;
+            if (id != i)
+            {
+                isChecked[id] = true;
+            }
+        }
+    }
+    // output the pin mapping
+    for (size_t i = 0; i < _FF_D_arr.size(); i++)
+    {
+        outputFile << _FF_D_arr[i].getOriName() << " map " << _FF_D_arr[i].getName() << "\n";
+        outputFile << _FF_Q_arr[i].getOriName() << " map " << _FF_Q_arr[i].getName() << "\n";
+        // find the clk name for origin and new pin
+        string newInstName = _FF_D_arr[i].getName().substr(0, _FF_D_arr[i].getName().find('/'));
+        string oriInstName = _FF_D_arr[i].getOriName().substr(0, _FF_D_arr[i].getName().find('/'));
+        string oriCLKName;
+        string newCLKName;
+        for (const auto &name : _ptr_Parser->_flipflopLib[_FF_D_arr[i].OriFF_type].PinName)
+        {
+            if (name.find("clk") != std::string::npos || name.find("CLK") != std::string::npos)
+            {
+                oriCLKName = name;
+                break;
+            }
+        }
+        for (const auto &name : _ptr_Parser->_flipflopLib[_FF_D_arr[i].FF_type].PinName)
+        {
+            if (name.find("clk") != std::string::npos || name.find("CLK") != std::string::npos)
+            {
+                newCLKName = name;
+                break;
+            }
+        }
+        outputFile << oriInstName + '/' + oriCLKName << " map " << newInstName + '/' + newCLKName << "\n";
+    }
+
+    std::cout << "Output successfully!" << std::endl;
+    outputFile.close();
 }
 
 void Solver::Solver::test()
@@ -353,6 +429,8 @@ void Solver::Solver::test()
     // initSolver();
     size_t inID = _Name_to_ID["C9/IN"];
     size_t outID = _Name_to_ID["C12/OUT"];
+    std::cout << inID << std::endl;
+    std::cout << outID << std::endl;
     std::cout << _ptr_STAEngine->getDistance(inID, outID) << std::endl;
 }
 
