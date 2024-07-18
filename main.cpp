@@ -6,6 +6,7 @@
 #include "parser.h"
 #include "solver.h"
 #include "STAEngine.h"
+#include "legalizer.h"
 
 using namespace std;
 int main(int argc, char *argv[])
@@ -25,15 +26,16 @@ int main(int argc, char *argv[])
 
     Solver::Solver solver;
     Solver::STAEngine STAEngine;
+    Solver::legalizer legalizer;
     solver.setParserPtr(&parser);
     solver.setSTAEnginePtr(&STAEngine);
+    solver.setLegalizerPtr(&legalizer);
     solver.initSolver();
     a = clock();
     cout << "Time for initialize solver: " << (a - b) << " sec" << endl;
-    solver.printOutput("AAA");
+    solver.test();
     b = clock();
     cout << "Time for legal and output: " << (b - a) << " sec" << endl;
-    solver.test();
 
     return 0;
 }

@@ -30,6 +30,7 @@ namespace Solver
         double totalNumOfSites;
     };
     class STAEngine; // forward declaration
+    class legalizer; // forward declaration
 
     class Solver
     {
@@ -37,6 +38,7 @@ namespace Solver
         Solver() : _ptr_Parser(nullptr), _ptr_STAEngine(nullptr) {}
         void setParserPtr(Parse::Parser *ptr) { _ptr_Parser = ptr; };
         void setSTAEnginePtr(STAEngine *ptr) { _ptr_STAEngine = ptr; };
+        void setLegalizerPtr(legalizer *ptr) { _ptr_legalizer = ptr; };
         void initSolver();
         void solve();
         void printOutput(const string &);
@@ -44,11 +46,13 @@ namespace Solver
 
         // friend class declaration
         friend class STAEngine;
+        friend class legalizer;
 
     private:
         // data part
         Parse::Parser *_ptr_Parser;
         STAEngine *_ptr_STAEngine;
+        legalizer *_ptr_legalizer;
         size_t _GATE_OFFSET;
         size_t _FF_D_OFFSET;
         size_t _FF_Q_OFFSET;
