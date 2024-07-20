@@ -604,7 +604,10 @@ vector<size_t> Solver::Solver::prePlace(const vector<size_t> &ff_group, size_t e
 
 void Solver::Solver::legalize()
 {
-    _ptr_legalizer->legalize();
+    if (!_ptr_legalizer->legalize())
+    {
+        std::cout << "legalize fail!!!!!!!!!!!!!" << std::endl;
+    }
 }
 
 vector<size_t> Solver::Solver::getGroupMem(Inst::FF_D *ptr) const

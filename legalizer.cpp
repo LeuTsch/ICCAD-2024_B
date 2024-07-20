@@ -159,6 +159,8 @@ void Solver::legalizer::categorizePlaceRegion()
                 NewRegion.siteWidth = siteWidth;
                 NewRegion.totalNumOfSites = totalNumOfSites;
                 _PlaceRegionSet.push_back(NewRegion);
+                // update ybefore
+                ybefore = basePosition.second;
 
                 // if it is the last item, close the region
                 if (i == PRpos2Pid.size() - 1)
@@ -194,9 +196,9 @@ void Solver::legalizer::categorizeFF()
         // check if the ff is in any of placeRegion
         for (size_t i = 0; i < _PlaceRegionSet.size(); i++)
         {
-            if (FFposition.first >= _PlaceRegionSet[i].xStart && FFposition.first <= _PlaceRegionSet[i].xEnd)
+            if (FFposition.first >= _PlaceRegionSet[i].xStart && FFposition.first < _PlaceRegionSet[i].xEnd)
             {
-                if (FFposition.second >= _PlaceRegionSet[i].yStart && FFposition.second <= _PlaceRegionSet[i].yEnd)
+                if (FFposition.second >= _PlaceRegionSet[i].yStart && FFposition.second < _PlaceRegionSet[i].yEnd)
                 {
                     isInCertainRegion = true;
                     _FFinPlaceRegion[i].push_back(ffID);
@@ -271,9 +273,9 @@ void Solver::legalizer::categorizeFF()
 bool Solver::legalizer::legalRegion(const list<size_t> &_FFList, struct PlaceRegion *_ptr_placeRegion)
 {
     int _MaxIteration = 30;
-    std::cout << "start to get placement row information." << std::endl;
-    // start the algorithm part
-    // define some constant for the algorithm
+    // std::cout << "start to get placement row information." << std::endl;
+    //  start the algorithm part
+    //  define some constant for the algorithm
     size_t numPlaceRow = int((_ptr_placeRegion->yEnd - _ptr_placeRegion->yStart) / _ptr_placeRegion->siteHight);
     double siteHeight = _ptr_placeRegion->siteHight;
     double siteWidth = _ptr_placeRegion->siteWidth;
@@ -281,8 +283,8 @@ bool Solver::legalizer::legalRegion(const list<size_t> &_FFList, struct PlaceReg
     double LFx_pos = _ptr_placeRegion->xStart;
     double LFy_pos = _ptr_placeRegion->yStart;
 
-    std::cout << "step 1: construct the matrix for placement grid." << std::endl;
-    // step 1: construct the matrix for placement grid
+    // std::cout << "step 1: construct the matrix for placement grid." << std::endl;
+    //  step 1: construct the matrix for placement grid
     vector<vector<bool>> _availPosTable; // if the grid point is available, the value would be true
     vector<vector<pair<size_t, int>>> _listWait4Legal;
     _availPosTable.reserve(numPlaceRow);
@@ -312,9 +314,9 @@ bool Solver::legalizer::legalRegion(const list<size_t> &_FFList, struct PlaceReg
             URx = int(siteNum - 1);
         }
         int URy = std::ceil((upperRight.second - LFy_pos) / siteHeight);
-        if (URy > int(numPlaceRow - 1))
+        if (URy > int(numPlaceRow))
         {
-            URy = int(numPlaceRow - 1);
+            URy = int(numPlaceRow);
         }
         // set grid related in _availPosTable to false
         for (int y = LLy; y < URy; y++)
@@ -332,8 +334,8 @@ bool Solver::legalizer::legalRegion(const list<size_t> &_FFList, struct PlaceReg
         initVec.reserve(512);
         _listWait4Legal.push_back(initVec);
     }
-    std::cout << "step 2: throw the FF to the nearests placement grid and sort it to placement row." << std::endl;
-    // step 2: throw all FF to the nearests placement grid and sort it to placement row
+    // std::cout << "step 2: throw the FF to the nearests placement grid and sort it to placement row." << std::endl;
+    //  step 2: throw all FF to the nearests placement grid and sort it to placement row
     vector<bool> check_list4ffInit(_id2ffPtr.size(), false);
     for (const auto &id : _FFList)
     {
@@ -359,6 +361,11 @@ bool Solver::legalizer::legalRegion(const list<size_t> &_FFList, struct PlaceReg
             LLx = int(siteNum - ffWidth);
         }
         int LLy = std::floor((ffPos.second - LFy_pos) / siteHeight);
+        if (ffPos.second - LFy_pos > siteHeight / 2)
+        {
+            LLy++;
+        }
+
         int ffHeight = std::floor(getFFHeight(_id2ffPtr[i]) / siteHeight);
         // boundry checking
         if (LLy < 0)
@@ -399,8 +406,8 @@ bool Solver::legalizer::legalRegion(const list<size_t> &_FFList, struct PlaceReg
 
     // end test*/
 
-    std::cout << "step 3: DP from lowest row to the highest." << std::endl;
-    // step 3: DP from lowest row to the highest
+    // std::cout << "step 3: DP from lowest row to the highest." << std::endl;
+    //  step 3: DP from lowest row to the highest
     int iterCount = 1; // use for iteration counter
     while (iterCount <= _MaxIteration)
     {
@@ -775,8 +782,8 @@ bool Solver::legalizer::legalRegion(const list<size_t> &_FFList, struct PlaceReg
             }
         }
 
-        std::cout << "step 4: assign the result." << std::endl;
-        // step 4: assign the result. If can't be solved, relax the constraint and goto step 3.
+        // std::cout << "step 4: assign the result." << std::endl;
+        //  step 4: assign the result. If can't be solved, relax the constraint and goto step 3.
         if (!Solvable)
         {
             continue;
@@ -798,13 +805,13 @@ bool Solver::legalizer::legalRegion(const list<size_t> &_FFList, struct PlaceReg
                     }
                 }
             }
-            std::cout << "legalization successfully. \n"
-                      << std::endl;
+            // std::cout << "legalization successfully. \n"
+            // << std::endl;
             return true;
         }
     }
-    std::cout << "legalization fail !!!!!!!!! \n"
-              << std::endl;
+    // std::cout << "legalization fail !!!!!!!!! \n"
+    //           << std::endl;
     return false;
 }
 
