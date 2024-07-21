@@ -44,6 +44,13 @@ namespace Solver
         void printOutput(const string &);
         void test(); // do whatever test you want here
 
+        /////////////////////// victor's part
+        void solve_initbuild();
+        void solve_findfeasible();
+        vector<size_t> solve_findmaximal(const vector<size_t> &, size_t, pair<double, double>, pair<double, double>);
+        void feasible_cal(const vector<size_t> &);
+        ///////////////////////
+
         // friend class declaration
         friend class STAEngine;
         friend class legalizer;
@@ -72,7 +79,6 @@ namespace Solver
         vector<vector<vector<size_t>>> _PlaceRow_in_Bin;
 
         // function part
-        bool mbffCluster();
         vector<size_t> prePlace(const vector<FF_D_ID> &, size_t, pair<double, double>); // return the FF_D_ID be grouped
         void slackDistribute(const double);                                             // should be called before mbff clustering
         void legalize();

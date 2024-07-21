@@ -7,6 +7,7 @@
 #include <algorithm>
 #include <map>
 #include <list>
+#include <unordered_map>
 
 #include "inst.h"
 #include "solver.h"
@@ -476,7 +477,7 @@ void Solver::Solver::solve_findfeasible()
         {
             if ((dia_x_arr[k].type == 1) && (dia_x_arr[k - 1].type == 0))
             {
-                target_x == k;
+                target_x = k;
                 bound_ctr_x++;
             }
         }
@@ -487,7 +488,7 @@ void Solver::Solver::solve_findfeasible()
         {
             if ((dia_y_arr[k].type == 1) && (dia_y_arr[k - 1].type == 0))
             {
-                target_y == k;
+                target_y = k;
                 bound_ctr_y++;
             }
         }
@@ -495,6 +496,7 @@ void Solver::Solver::solve_findfeasible()
         if ((bound_ctr_x != 1) || (bound_ctr_y != 1))
         {
             // no feasible
+            _FF_D_arr[i].grouped = 1;
         }
         else
         {
@@ -517,7 +519,7 @@ void Solver::Solver::solve_findfeasible()
         }
     }
 
-    std::cout << "findfeasible is completed" << std::endl;
+    // std::cout << "findfeasible is completed" << std::endl;
 }
 
 void Solver::Solver::solve()
@@ -525,16 +527,6 @@ void Solver::Solver::solve()
     solve_initbuild();
 
     solve_findfeasible();
-
-    // test for slack 0 0 0
-    // std::cout << "Test for Slack" << std::endl;
-
-    /*
-    for (const auto &i : _FF_D_arr){
-        std::cout << i.slack << std::endl;
-    }
-    std::cout << "Test for Slack is completed" << std::endl;
-    */
 
     // clock一樣才能綁，外面掛一層迴圈跑過所有clock
     // FFD.getclock 吐 id, id == 0 ... for(int i = 0; i < _ClkList.size(); i++)
@@ -563,54 +555,91 @@ void Solver::Solver::solve()
         }
 
         std::sort(feas_x_clk.begin(), feas_x_clk.end(), compareByPosVal_2);
+
         std::sort(feas_y_clk.begin(), feas_y_clk.end(), compareByPosVal_2);
 
         size_t esssential_ff;
         // find maximal clique
-        while (1)
+        while (!feas_x_clk.empty())
         {
             vector<size_t> ff_group;
 
+            // std::cout << "Before clustering, the size: " << feas_x_clk.size() << std::endl;
             for (int i = 1; i < feas_x_clk.size(); i++)
             {
-                if (_FF_D_arr[feas_x_clk[i - 1].FF_id].grouped == 0)
+
+                ff_group.push_back(feas_x_clk[i - 1].FF_id + _FF_D_OFFSET);
+                if ((feas_x_clk[i - 1].type) == 0 && (feas_x_clk[i].type == 1))
                 {
-                    ff_group.push_back(feas_x_clk[i - 1].FF_id + _FF_D_OFFSET);
-                    if ((feas_x_clk[i - 1].type) == 0 && (feas_x_clk[i].type == 1))
-                    {
-                        // group 沒有 essential
-                        // record the essential is i
-                        esssential_ff = feas_x_clk[i].FF_id + _FF_D_OFFSET;
-                        // consider the y part
-                        pair<double, double> x_pos_r, y_pos_r; // final region
-                        vector<size_t> final_group;
-                        vector<size_t> result_group;
-                        // find the position, 還原成正常座標
+                    // ff_group 沒有 essential, result_group有
+                    // record the essential is i
 
-                        result_group = solve_findmaximal(ff_group, esssential_ff, x_pos_r, y_pos_r); // segmentation fault
-                        std::cout << "Hiiiiiii" << std::endl;
-                        // preplace and slack release
-                        pair<double, double> pos;
-                        pos.first = (x_pos_r.first + x_pos_r.second) * 0.5;
-                        pos.second = (y_pos_r.first + y_pos_r.second) * 0.5;
-                        pos.first = (pos.first - pos.second) * 0.5; // change to original coordinate
-                        pos.second = (pos.first + pos.second) * 0.5;
-                        std::cout << "preplace begin" << std::endl;
-                        final_group = prePlace(result_group, esssential_ff, pos);
-                        std::cout << "preplace is completed" << std::endl;
-                        // calculate the feasible
+                    esssential_ff = feas_x_clk[i].FF_id + _FF_D_OFFSET;
 
-                        break;
-                    }
+                    // consider the y part
+                    pair<double, double> x_pos_r, y_pos_r; // final region
+                    vector<size_t> final_group;
+                    vector<size_t> result_group;
+                    // find the position, 還原成正常座標
+
+                    result_group = solve_findmaximal(ff_group, esssential_ff, x_pos_r, y_pos_r);
+
+                    result_group.push_back(esssential_ff);
+
+                    // preplace and slack release
+                    pair<double, double> pos;
+                    pos.first = (x_pos_r.first + x_pos_r.second) * 0.5;
+                    pos.second = (y_pos_r.first + y_pos_r.second) * 0.5;
+                    pos.first = (pos.first - pos.second) * 0.5; // change to original coordinate
+                    pos.second = (pos.first + pos.second) * 0.5;
+                    // std::cout << "preplace begin" << std::endl;
+                    final_group = prePlace(result_group, esssential_ff, pos);
+
+                    // final_group有essential
+
+                    // std::cout << "preplace is completed" << std::endl;
+                    //  calculate the feasible
+
+                    solve_findfeasible();
+                    break;
                 }
             }
+
+            // delete the grouped member in feas_x_clk
+            for (int i = 0; i < feas_x_clk.size(); i++)
+            {
+                if (_FF_D_arr[feas_x_clk[i].FF_id].grouped == 1)
+                {
+                    feas_x_clk.erase(feas_x_clk.begin() + i);
+                }
+            }
+            // std::cout << "Clear is completed" << std::endl;
+            // std::cout << "After clustering, the size: " << feas_x_clk.size() << std::endl;
+            // std::cout << _FF_D_arr[feas_x_clk[0].FF_id].fea_x_s.pos_val << std::endl;
+            // std::cout << _FF_D_arr[feas_x_clk[0].FF_id].fea_x_e.pos_val << std::endl;
+
+            // std::cout << _FF_D_arr[feas_x_clk[0].FF_id].getOriName() << std::endl;
+            // std::cout << _FF_D_arr[feas_x_clk[1].FF_id].getOriName() << std::endl;
+
+            // std::cout << "FFID is " << feas_x_clk[0].FF_id << std::endl;
         }
+        std::cout << "CLKlist " << k << " is finished" << std::endl;
     }
 
     // 決定後來的DQ 的 pos, 記得Q的正方形要往左移（或D往右, Q往左）
     // preplace完 slack release, 更新DQ正方形，重新畫table
 
-    std::cout << "Solver Check is completed !" << std::endl;
+    std::cout << "Solver is completed !" << std::endl;
+}
+
+void Solver::Solver::feasible_cal(const vector<size_t> &final_group)
+{
+    std::cout << "Hello" << std::endl;
+
+    for (int i = 0; i < final_group.size(); i++)
+    {
+        size_t id = final_group[i] - _FF_D_OFFSET;
+    }
 }
 
 vector<size_t> Solver::Solver::solve_findmaximal(const vector<size_t> &ff_group, size_t essential_ID, pair<double, double> x_pos_r, pair<double, double> y_pos_r)
@@ -722,7 +751,7 @@ vector<size_t> Solver::Solver::solve_findmaximal(const vector<size_t> &ff_group,
             result_group.push_back(id + _FF_D_OFFSET);
         }
     }
-    std::cout << "findmaximal is completed" << std::endl;
+    // std::cout << "findmaximal is completed" << std::endl;
 
     return result_group;
 }

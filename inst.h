@@ -19,6 +19,15 @@ namespace Inst
         INST_GATE
     };
 
+    /////////////////// victor's part
+    struct feasible_coor
+    {
+        bool type; // s = 0; e = 1;
+        double pos_val;
+        size_t FF_id;
+    };
+    ////////////////////
+
     class Inst
     {
     public:
@@ -96,6 +105,20 @@ namespace Inst
         size_t FF_type;
         size_t OriFF_type;
         // size_t ID_to_Q;
+
+        ////////////////////////////////// added by victor
+        // store the feasible region in D
+        feasible_coor fea_x_s;
+        feasible_coor fea_x_e;
+        feasible_coor fea_y_s;
+        feasible_coor fea_y_e;
+
+        double Dx_pos, Dy_pos;
+
+        pair<double, double> D_fanin_pos;
+
+        //////////////////////////////////
+
         vector<size_t> faninCone;
         vector<size_t> outGate2Fanin;  // store the gate out pin ID for the path to the fanin FF_Q in the same index in faninCone
                                        // if two FF are connect directly, the id would be _ID_to_instance.size()
@@ -140,6 +163,14 @@ namespace Inst
         bool grouped;
         double slack;
         size_t FF_type;
+
+        ///////////////////////////////// added by victor
+        double Qx_pos, Qy_pos;
+
+        vector<pair<double, double>> Q_fanout_pos;
+
+        ////////////////////////////////
+
         // size_t ID_to_D;
         vector<size_t> fanoutCone;
         vector<size_t> outGate2Fanout; // store the gate out pin ID for the path to the fanin FF_D in the same index in fanoutCone

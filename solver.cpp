@@ -337,12 +337,435 @@ void Solver::Solver::initSolver()
               << std::endl;
 }
 
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// THE NEW PART
+
+void Solver::Solver::solve_initbuild()
+{
+    slackDistribute(0.6);
+
+    // build the coordinate vector
+    for (int i = 0; i < _FF_D_arr.size(); i++)
+    {
+
+        double Dx = findPinPosition(i + _FF_D_OFFSET).first;
+        _FF_D_arr[i].Dx_pos = Dx;
+
+        double Dy = findPinPosition(i + _FF_D_OFFSET).second;
+        _FF_D_arr[i].Dy_pos = Dy;
+
+        double Qx = findPinPosition(i + _FF_Q_OFFSET).first;
+        _FF_Q_arr[i].Qx_pos = Qx;
+
+        double Qy = findPinPosition(i + _FF_Q_OFFSET).second;
+        _FF_Q_arr[i].Qy_pos = Qy;
+    }
+
+    // build fanin fanout position
+    for (int i = 0; i < _FF_D_arr.size(); i++)
+    {
+        size_t D_id = i + _FF_D_OFFSET;
+        vector<pair<double, double>> pos = getAdjacentPinPosition(D_id);
+        // check the size of pos is 1.
+        _FF_D_arr[i].D_fanin_pos = pos[0];
+    }
+
+    for (int i = 0; i < _FF_Q_arr.size(); i++)
+    {
+        size_t Q_id = i + _FF_Q_OFFSET;
+        _FF_Q_arr[i].Q_fanout_pos.reserve(_FF_Q_arr.size());
+        _FF_Q_arr[i].Q_fanout_pos = getAdjacentPinPosition(Q_id);
+    }
+
+    std::cout << "initbuild is completed" << std::endl;
+}
+
+struct coor_w_se
+{
+    bool type; // s = 0; e = 1;
+    double pos_val;
+    int or_ind; // the index to represent each diamond, Dfanin diamond's index should be 0, 1~n is Qfanout diamond.
+};
+bool compareByPosVal(const coor_w_se &a, const coor_w_se &b)
+{
+    return a.pos_val < b.pos_val;
+}
+
+bool compareByPosVal_2(const Inst::feasible_coor &a, const Inst::feasible_coor &b)
+{
+    return a.pos_val < b.pos_val;
+}
+
+void Solver::Solver::solve_findfeasible()
+{
+    // draw the feasible region, (use fanin fanout pos and the DQ slack ??)
+    // rotate the coor first, or draw the feasible region first ?
+
+    // 畫某個FF的feasible
+    // feasible 邊長是 wire length + slack
+    // 跑過所有fanin_arr(fanout)的開頭，遇到下一個fanin_arr(out)的結尾，就是x的解
+    // 如果在所有開頭跑完之前，就遇到某個人的結尾，那無解，放原地
+
+    // rotate the coordinate and find the feasible
+
+    for (int i = 0; i < _FF_D_arr.size(); i++)
+    {
+        double dist = (_FF_Q_arr[i].Qx_pos - _FF_D_arr[i].Dx_pos) * 0.5;
+        double D_dia_len = fabs(_FF_D_arr[i].Dx_pos - _FF_D_arr[i].D_fanin_pos.first) + fabs(_FF_D_arr[i].Dy_pos - _FF_D_arr[i].D_fanin_pos.second) + _FF_D_arr[i].slack;
+        double Dx_pos_r = _FF_D_arr[i].Dy_pos + _FF_D_arr[i].Dx_pos + dist; // x'=y+x //D shift right
+        double Dy_pos_r = _FF_D_arr[i].Dy_pos - _FF_D_arr[i].Dx_pos - dist; // y'=y-x
+        coor_w_se Dx_s, Dx_e;
+        vector<coor_w_se> dia_x_arr;
+        dia_x_arr.reserve(256);
+        Dx_s.pos_val = Dx_pos_r - (2 * D_dia_len);
+        Dx_s.type = 0;
+        Dx_s.or_ind = 0;
+        Dx_e.pos_val = Dx_pos_r + (2 * D_dia_len);
+        Dx_e.type = 1;
+        Dx_e.or_ind = 0;
+
+        dia_x_arr.push_back(Dx_s);
+        dia_x_arr.push_back(Dx_e);
+
+        coor_w_se Dy_s, Dy_e;
+        vector<coor_w_se> dia_y_arr;
+        dia_y_arr.reserve(256);
+        Dy_s.pos_val = Dy_pos_r - (2 * D_dia_len);
+        Dy_s.type = 0;
+        Dy_s.or_ind = 0;
+        Dy_e.pos_val = Dy_pos_r + (2 * D_dia_len);
+        Dy_e.type = 1;
+        Dy_e.or_ind = 0;
+
+        dia_y_arr.push_back(Dy_s);
+        dia_y_arr.push_back(Dy_e);
+
+        // Q part, run through all fanout.
+
+        double Qx_pos_r = _FF_Q_arr[i].Qy_pos + _FF_Q_arr[i].Qx_pos - dist; // Q shift left
+        double Qy_pos_r = _FF_Q_arr[i].Qy_pos - _FF_Q_arr[i].Qx_pos + dist;
+        for (int j = 0; j < _FF_Q_arr[i].Q_fanout_pos.size(); j++)
+        {
+            double Q_dia_len = fabs(_FF_Q_arr[i].Qx_pos - _FF_Q_arr[i].Q_fanout_pos[j].first) + fabs(_FF_Q_arr[i].Qy_pos - _FF_Q_arr[i].Q_fanout_pos[j].second) + _FF_Q_arr[i].slack;
+            coor_w_se Qx_s, Qx_e;
+            Qx_s.pos_val = Qx_pos_r - (2 * Q_dia_len);
+            Qx_s.type = 0;
+            Qx_s.or_ind = j + 1;
+            Qx_e.pos_val = Qx_pos_r + (2 * Q_dia_len);
+            Qx_e.type = 1;
+            Qx_e.or_ind = j + 1;
+
+            dia_x_arr.push_back(Qx_s);
+            dia_x_arr.push_back(Qx_e);
+
+            coor_w_se Qy_s, Qy_e;
+            Qy_s.pos_val = Qy_pos_r - (2 * Q_dia_len);
+            Qy_s.type = 0;
+            Qy_s.or_ind = j + 1;
+            Qy_e.pos_val = Qy_pos_r + (2 * Q_dia_len);
+            Qy_e.type = 1;
+            Qy_e.or_ind = j + 1;
+
+            dia_y_arr.push_back(Qy_s);
+            dia_y_arr.push_back(Qy_e);
+        }
+
+        // draw feasible by using dia_x_arr, dia_y_arr
+        // 對 dia_x_arr 排序
+        std::sort(dia_x_arr.begin(), dia_x_arr.end(), compareByPosVal);
+
+        // 對 dia_y_arr 排序
+        std::sort(dia_y_arr.begin(), dia_y_arr.end(), compareByPosVal);
+
+        int target_x;
+        int bound_ctr_x = 0;
+        for (int k = 1; k < dia_x_arr.size(); k++)
+        {
+            if ((dia_x_arr[k].type == 1) && (dia_x_arr[k - 1].type == 0))
+            {
+                target_x = k;
+                bound_ctr_x++;
+            }
+        }
+
+        int target_y;
+        int bound_ctr_y = 0;
+        for (int k = 1; k < dia_y_arr.size(); k++)
+        {
+            if ((dia_y_arr[k].type == 1) && (dia_y_arr[k - 1].type == 0))
+            {
+                target_y = k;
+                bound_ctr_y++;
+            }
+        }
+
+        if ((bound_ctr_x != 1) || (bound_ctr_y != 1))
+        {
+            // no feasible
+            _FF_D_arr[i].grouped = 1;
+        }
+        else
+        {
+            // feasible
+            _FF_D_arr[i].fea_x_s.type = 0;
+            _FF_D_arr[i].fea_x_s.pos_val = dia_x_arr[target_x - 1].pos_val;
+            _FF_D_arr[i].fea_x_s.FF_id = i;
+
+            _FF_D_arr[i].fea_x_e.type = 1;
+            _FF_D_arr[i].fea_x_e.pos_val = dia_x_arr[target_x].pos_val;
+            _FF_D_arr[i].fea_x_e.FF_id = i;
+
+            _FF_D_arr[i].fea_y_s.type = 0;
+            _FF_D_arr[i].fea_y_s.pos_val = dia_y_arr[target_y - 1].pos_val;
+            _FF_D_arr[i].fea_y_s.FF_id = i;
+
+            _FF_D_arr[i].fea_y_e.type = 1;
+            _FF_D_arr[i].fea_y_e.pos_val = dia_y_arr[target_y].pos_val;
+            _FF_D_arr[i].fea_y_e.FF_id = i;
+        }
+    }
+
+    // std::cout << "findfeasible is completed" << std::endl;
+}
+
 void Solver::Solver::solve()
 {
-    /*
-    TODO: implement the MBFF clustering algorithm
-    */
+    solve_initbuild();
+
+    solve_findfeasible();
+
+    // clock一樣才能綁，外面掛一層迴圈跑過所有clock
+    // FFD.getclock 吐 id, id == 0 ... for(int i = 0; i < _ClkList.size(); i++)
+
+    for (int k = 0; k < _ClkList.size(); k++)
+    { /*run through clk*/
+
+        vector<Inst::feasible_coor> feas_x_clk;
+        feas_x_clk.reserve(_FF_D_arr.size());
+        vector<Inst::feasible_coor> feas_y_clk;
+        feas_y_clk.reserve(_FF_D_arr.size());
+
+        for (int i = 0; i < _FF_D_arr.size(); i++)
+        {
+
+            if (_FF_D_arr[i].getClk() == k)
+            {
+                // collect
+                // may collect the empty value of no-feasible FF
+                feas_x_clk.push_back(_FF_D_arr[i].fea_x_s);
+                feas_x_clk.push_back(_FF_D_arr[i].fea_x_e);
+
+                feas_y_clk.push_back(_FF_D_arr[i].fea_y_s);
+                feas_y_clk.push_back(_FF_D_arr[i].fea_y_e);
+            }
+        }
+
+        std::sort(feas_x_clk.begin(), feas_x_clk.end(), compareByPosVal_2);
+
+        std::sort(feas_y_clk.begin(), feas_y_clk.end(), compareByPosVal_2);
+
+        size_t esssential_ff;
+        // find maximal clique
+        while (!feas_x_clk.empty())
+        {
+            vector<size_t> ff_group;
+
+            // std::cout << "Before clustering, the size: " << feas_x_clk.size() << std::endl;
+            for (int i = 1; i < feas_x_clk.size(); i++)
+            {
+
+                ff_group.push_back(feas_x_clk[i - 1].FF_id + _FF_D_OFFSET);
+                if ((feas_x_clk[i - 1].type) == 0 && (feas_x_clk[i].type == 1))
+                {
+                    // ff_group 沒有 essential, result_group有
+                    // record the essential is i
+
+                    esssential_ff = feas_x_clk[i].FF_id + _FF_D_OFFSET;
+
+                    // consider the y part
+                    pair<double, double> x_pos_r, y_pos_r; // final region
+                    vector<size_t> final_group;
+                    vector<size_t> result_group;
+                    // find the position, 還原成正常座標
+
+                    result_group = solve_findmaximal(ff_group, esssential_ff, x_pos_r, y_pos_r);
+
+                    result_group.push_back(esssential_ff);
+
+                    // preplace and slack release
+                    pair<double, double> pos;
+                    pos.first = (x_pos_r.first + x_pos_r.second) * 0.5;
+                    pos.second = (y_pos_r.first + y_pos_r.second) * 0.5;
+                    pos.first = (pos.first - pos.second) * 0.5; // change to original coordinate
+                    pos.second = (pos.first + pos.second) * 0.5;
+                    // std::cout << "preplace begin" << std::endl;
+                    final_group = prePlace(result_group, esssential_ff, pos);
+
+                    // final_group有essential
+
+                    // std::cout << "preplace is completed" << std::endl;
+                    //  calculate the feasible
+
+                    solve_findfeasible();
+                    break;
+                }
+            }
+
+            // delete the grouped member in feas_x_clk
+            for (int i = 0; i < feas_x_clk.size(); i++)
+            {
+                if (_FF_D_arr[feas_x_clk[i].FF_id].grouped == 1)
+                {
+                    feas_x_clk.erase(feas_x_clk.begin() + i);
+                }
+            }
+            // std::cout << "Clear is completed" << std::endl;
+            // std::cout << "After clustering, the size: " << feas_x_clk.size() << std::endl;
+            // std::cout << _FF_D_arr[feas_x_clk[0].FF_id].fea_x_s.pos_val << std::endl;
+            // std::cout << _FF_D_arr[feas_x_clk[0].FF_id].fea_x_e.pos_val << std::endl;
+
+            // std::cout << _FF_D_arr[feas_x_clk[0].FF_id].getOriName() << std::endl;
+            // std::cout << _FF_D_arr[feas_x_clk[1].FF_id].getOriName() << std::endl;
+
+            // std::cout << "FFID is " << feas_x_clk[0].FF_id << std::endl;
+        }
+        std::cout << "CLKlist " << k << " is finished" << std::endl;
+    }
+
+    // 決定後來的DQ 的 pos, 記得Q的正方形要往左移（或D往右, Q往左）
+    // preplace完 slack release, 更新DQ正方形，重新畫table
+    legalize();
+    std::cout << "Solver is completed !" << std::endl;
 }
+
+void Solver::Solver::feasible_cal(const vector<size_t> &final_group)
+{
+    std::cout << "Hello" << std::endl;
+
+    for (int i = 0; i < final_group.size(); i++)
+    {
+        size_t id = final_group[i] - _FF_D_OFFSET;
+    }
+}
+
+vector<size_t> Solver::Solver::solve_findmaximal(const vector<size_t> &ff_group, size_t essential_ID, pair<double, double> x_pos_r, pair<double, double> y_pos_r)
+{
+    vector<size_t> result_group; // bigger id
+    double ess_x_s = _FF_D_arr[essential_ID - _FF_D_OFFSET].fea_x_s.pos_val;
+    double ess_x_e = _FF_D_arr[essential_ID - _FF_D_OFFSET].fea_x_e.pos_val;
+    double ess_y_s = _FF_D_arr[essential_ID - _FF_D_OFFSET].fea_y_s.pos_val;
+    double ess_y_e = _FF_D_arr[essential_ID - _FF_D_OFFSET].fea_y_e.pos_val;
+
+    for (int i = 0; i < ff_group.size(); i++)
+    {
+        double ff_x_s = _FF_D_arr[ff_group[i] - _FF_D_OFFSET].fea_x_s.pos_val;
+        double ff_x_e = _FF_D_arr[ff_group[i] - _FF_D_OFFSET].fea_x_e.pos_val;
+        double ff_y_s = _FF_D_arr[ff_group[i] - _FF_D_OFFSET].fea_y_s.pos_val;
+        double ff_y_e = _FF_D_arr[ff_group[i] - _FF_D_OFFSET].fea_y_e.pos_val;
+        size_t id = _FF_D_arr[ff_group[i] - _FF_D_OFFSET].fea_x_s.FF_id;
+        bool valid_x = 0;
+        bool valid_y = 0;
+
+        if (ess_x_s < ff_x_s)
+        {
+            if (ess_x_e >= ff_x_s && ess_x_e < ff_x_e)
+            {
+                x_pos_r.first = ff_x_s;
+                x_pos_r.second = ess_x_e;
+                valid_x = 1;
+            }
+            else if (ess_x_e >= ff_x_e)
+            {
+                x_pos_r.first = ff_x_s;
+                x_pos_r.second = ff_x_e;
+                valid_x = 1;
+            }
+            else
+            {
+                x_pos_r.first = ess_x_s;
+                x_pos_r.second = ess_x_e;
+                valid_x = 0;
+            }
+        }
+        else
+        { // ess_x_s >= ff_x_s
+            if (ff_x_e >= ess_x_s && ff_x_e < ess_x_e)
+            {
+                x_pos_r.first = ess_x_s;
+                x_pos_r.second = ff_x_e;
+                valid_x = 1;
+            }
+            else if (ess_x_e < ff_x_e)
+            {
+                x_pos_r.first = ess_x_s;
+                x_pos_r.second = ess_x_e;
+                valid_x = 1;
+            }
+            else
+            {
+                x_pos_r.first = ess_x_s;
+                x_pos_r.second = ess_x_e;
+                valid_x = 0;
+            }
+        }
+
+        if (ess_y_s < ff_y_s)
+        {
+            if (ess_y_e >= ff_y_s && ess_y_e < ff_y_e)
+            {
+                y_pos_r.first = ff_y_s;
+                y_pos_r.second = ess_y_e;
+                valid_y = 1;
+            }
+            else if (ess_y_e >= ff_y_e)
+            {
+                y_pos_r.first = ff_y_s;
+                y_pos_r.second = ff_y_e;
+                valid_y = 1;
+            }
+            else
+            {
+                y_pos_r.first = ess_y_s;
+                y_pos_r.second = ess_y_e;
+                valid_y = 0;
+            }
+        }
+        else
+        { // ess_x_s >= ff_x_s
+            if (ff_y_e >= ess_y_s && ff_y_e < ess_y_e)
+            {
+                y_pos_r.first = ess_y_s;
+                y_pos_r.second = ff_y_e;
+                valid_y = 1;
+            }
+            else if (ess_y_e < ff_y_e)
+            {
+                y_pos_r.first = ess_y_s;
+                y_pos_r.second = ess_y_e;
+                valid_y = 1;
+            }
+            else
+            {
+                y_pos_r.first = ess_y_s;
+                y_pos_r.second = ess_y_e;
+                valid_y = 0;
+            }
+        }
+
+        if (valid_x == 1 && valid_y == 1)
+        {
+            result_group.push_back(id + _FF_D_OFFSET);
+        }
+    }
+    // std::cout << "findmaximal is completed" << std::endl;
+
+    return result_group;
+}
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 void Solver::Solver::printOutput(const string &outFileName)
 {
@@ -439,14 +862,6 @@ void Solver::Solver::test()
         pair<double, double> pos = getFFPosition(&_FF_D_arr[i]);
         std::cout << _FF_D_arr[i].getName() << ": " << pos.first << " " << pos.second << std::endl;
     }
-}
-
-bool Solver::Solver::mbffCluster() // can add parameter to implement the Window-based sequence generation
-{
-    /*
-    TODO: group the possible Multibit FF and use prePlace() function to place it and release slack
-    */
-    return true;
 }
 
 vector<size_t> Solver::Solver::prePlace(const vector<size_t> &ff_group, size_t essential_ID, pair<double, double> pos)

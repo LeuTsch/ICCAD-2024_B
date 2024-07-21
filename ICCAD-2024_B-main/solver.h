@@ -46,6 +46,7 @@ namespace Solver
         void solve_initbuild();
         void solve_findfeasible();
         vector<size_t> solve_findmaximal(const vector<size_t> &, size_t, pair<double, double>, pair<double, double>);
+        void feasible_cal(const vector<size_t> &);
         ///////////////////////
 
         // friend class declaration
@@ -75,8 +76,6 @@ namespace Solver
 
         /////////////////////////////
         // slack info
-        vector<double> S_fi;
-        vector<double> S_fo;
 
         /////////////////////////////
 
