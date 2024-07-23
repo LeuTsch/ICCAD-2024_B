@@ -329,7 +329,7 @@ void Solver::Solver::initSolver()
     _ptr_STAEngine->initEngine(_NetList, _ID_to_instance);
 
     // step8: initialize the legalizer
-    std::cout << "step7: initialize the legalizer" << std::endl;
+    std::cout << "step8: initialize the legalizer" << std::endl;
     assert(_ptr_legalizer != nullptr);
     _ptr_legalizer->setSolverPtr(this);
 
@@ -345,6 +345,7 @@ void Solver::Solver::initSolver()
 void Solver::Solver::solve_initbuild()
 {
     slackDistribute(0.6);
+    std::cout << "slackdistribute is completed" << std::endl;
 
     // build the coordinate vector
     for (int i = 0; i < _FF_D_arr.size(); i++)
@@ -362,13 +363,15 @@ void Solver::Solver::solve_initbuild()
         double Qy = findPinPosition(i + _FF_Q_OFFSET).second;
         _FF_Q_arr[i].Qy_pos = Qy;
     }
-
-    // build fanin fanout position
+    // std::cout << "check1" << std::endl;
+    // std::cout << "FFDsize: " << _FF_D_arr.size() << std::endl;
+    //  build fanin fanout position
     for (int i = 0; i < _FF_D_arr.size(); i++)
     {
         size_t D_id = i + _FF_D_OFFSET;
         vector<pair<double, double>> pos = getAdjacentPinPosition(D_id);
-        // check the size of pos is 1.
+        // std::cout << "check2" << std::endl;
+        //  check the size of pos is 1.
         _FF_D_arr[i].D_fanin_pos = pos[0];
     }
 
@@ -413,7 +416,7 @@ void Solver::Solver::solve_findfeasible()
     for (int i = 0; i < _FF_D_arr.size(); i++)
     {
         double dist = (_FF_Q_arr[i].Qx_pos - _FF_D_arr[i].Dx_pos) * 0.5;
-        double D_dia_len = fabs(_FF_D_arr[i].Dx_pos - _FF_D_arr[i].D_fanin_pos.first) + fabs(_FF_D_arr[i].Dy_pos - _FF_D_arr[i].D_fanin_pos.second) + _FF_D_arr[i].slack;
+        double D_dia_len = fabs(_FF_D_arr[i].Dx_pos - _FF_D_arr[i].D_fanin_pos.first) + fabs(_FF_D_arr[i].Dy_pos - _FF_D_arr[i].D_fanin_pos.second) + _FF_D_arr[i].slack / (_ptr_Parser->_displaceDelay);
         double Dx_pos_r = _FF_D_arr[i].Dy_pos + _FF_D_arr[i].Dx_pos + dist; // x'=y+x //D shift right
         double Dy_pos_r = _FF_D_arr[i].Dy_pos - _FF_D_arr[i].Dx_pos - dist; // y'=y-x
         coor_w_se Dx_s, Dx_e;
@@ -448,7 +451,7 @@ void Solver::Solver::solve_findfeasible()
         double Qy_pos_r = _FF_Q_arr[i].Qy_pos - _FF_Q_arr[i].Qx_pos + dist;
         for (int j = 0; j < _FF_Q_arr[i].Q_fanout_pos.size(); j++)
         {
-            double Q_dia_len = fabs(_FF_Q_arr[i].Qx_pos - _FF_Q_arr[i].Q_fanout_pos[j].first) + fabs(_FF_Q_arr[i].Qy_pos - _FF_Q_arr[i].Q_fanout_pos[j].second) + _FF_Q_arr[i].slack;
+            double Q_dia_len = fabs(_FF_Q_arr[i].Qx_pos - _FF_Q_arr[i].Q_fanout_pos[j].first) + fabs(_FF_Q_arr[i].Qy_pos - _FF_Q_arr[i].Q_fanout_pos[j].second) + _FF_Q_arr[i].slack / (_ptr_Parser->_displaceDelay);
             coor_w_se Qx_s, Qx_e;
             Qx_s.pos_val = Qx_pos_r - (2 * Q_dia_len);
             Qx_s.type = 0;
@@ -527,7 +530,7 @@ void Solver::Solver::solve_findfeasible()
         }
     }
 
-    // std::cout << "findfeasible is completed" << std::endl;
+    std::cout << "findfeasible is completed" << std::endl;
 }
 
 void Solver::Solver::solve()
@@ -592,6 +595,8 @@ void Solver::Solver::solve()
 
                     result_group = solve_findmaximal(ff_group, esssential_ff, x_pos_r, y_pos_r);
 
+                    // std::cout << x_pos_r.first << " ," << x_pos_r.second << std::endl;
+
                     result_group.push_back(esssential_ff);
 
                     // preplace and slack release
@@ -600,7 +605,8 @@ void Solver::Solver::solve()
                     pos.second = (y_pos_r.first + y_pos_r.second) * 0.5;
                     pos.first = (pos.first - pos.second) * 0.5; // change to original coordinate
                     pos.second = (pos.first + pos.second) * 0.5;
-                    // std::cout << "preplace begin" << std::endl;
+                    // std::cout << pos.first << " ," << pos.second << std::endl;
+                    //  std::cout << "preplace begin" << std::endl;
                     final_group = prePlace(result_group, esssential_ff, pos);
 
                     // final_group有essential
@@ -608,7 +614,7 @@ void Solver::Solver::solve()
                     // std::cout << "preplace is completed" << std::endl;
                     //  calculate the feasible
 
-                    solve_findfeasible();
+                    // solve_findfeasible();
                     break;
                 }
             }
@@ -636,6 +642,7 @@ void Solver::Solver::solve()
 
     // 決定後來的DQ 的 pos, 記得Q的正方形要往左移（或D往右, Q往左）
     // preplace完 slack release, 更新DQ正方形，重新畫table
+
     legalize();
     std::cout << "Solver is completed !" << std::endl;
 }
@@ -650,7 +657,7 @@ void Solver::Solver::feasible_cal(const vector<size_t> &final_group)
     }
 }
 
-vector<size_t> Solver::Solver::solve_findmaximal(const vector<size_t> &ff_group, size_t essential_ID, pair<double, double> x_pos_r, pair<double, double> y_pos_r)
+vector<size_t> Solver::Solver::solve_findmaximal(const vector<size_t> &ff_group, size_t essential_ID, pair<double, double> &x_pos_r, pair<double, double> &y_pos_r)
 {
     vector<size_t> result_group; // bigger id
     double ess_x_s = _FF_D_arr[essential_ID - _FF_D_OFFSET].fea_x_s.pos_val;
@@ -664,6 +671,7 @@ vector<size_t> Solver::Solver::solve_findmaximal(const vector<size_t> &ff_group,
         double ff_x_e = _FF_D_arr[ff_group[i] - _FF_D_OFFSET].fea_x_e.pos_val;
         double ff_y_s = _FF_D_arr[ff_group[i] - _FF_D_OFFSET].fea_y_s.pos_val;
         double ff_y_e = _FF_D_arr[ff_group[i] - _FF_D_OFFSET].fea_y_e.pos_val;
+        // std::cout << ff_x_s << " ," << ff_x_e << std::endl;
         size_t id = _FF_D_arr[ff_group[i] - _FF_D_OFFSET].fea_x_s.FF_id;
         bool valid_x = 0;
         bool valid_y = 0;
@@ -675,6 +683,7 @@ vector<size_t> Solver::Solver::solve_findmaximal(const vector<size_t> &ff_group,
                 x_pos_r.first = ff_x_s;
                 x_pos_r.second = ess_x_e;
                 valid_x = 1;
+                // std::cout << x_pos_r.first << " ," << x_pos_r.second << std::endl;
             }
             else if (ess_x_e >= ff_x_e)
             {
@@ -762,6 +771,22 @@ vector<size_t> Solver::Solver::solve_findmaximal(const vector<size_t> &ff_group,
     // std::cout << "findmaximal is completed" << std::endl;
 
     return result_group;
+}
+
+void Solver::Solver::solve_test()
+{
+    solve_initbuild();
+
+    solve_findfeasible();
+
+    for (int i = 0; i < _FF_D_arr.size(); i++)
+    {
+        vector<size_t> ff_group;
+        size_t id = i + _FF_D_OFFSET;
+        ff_group.push_back(id);
+        prePlace(ff_group, id, _FF_D_arr[i].getPosition());
+    }
+    legalize();
 }
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -856,12 +881,18 @@ void Solver::Solver::printOutput(const string &outFileName)
 void Solver::Solver::test()
 {
     // initSolver();
+    /*legal test
     legalize();
     for (size_t i = 0; i < _FF_D_arr.size(); i++)
     {
         pair<double, double> pos = getFFPosition(&_FF_D_arr[i]);
         std::cout << _FF_D_arr[i].getName() << ": " << pos.first << " " << pos.second << std::endl;
-    }
+    }*/
+
+    // STA test
+    size_t in = _Name_to_ID.at("C9/IN");
+    size_t out = _Name_to_ID.at("C12/OUT");
+    std::cout << _ptr_STAEngine->getDistance(in, out) << std::endl;
 }
 
 vector<size_t> Solver::Solver::prePlace(const vector<size_t> &ff_group, size_t essential_ID, pair<double, double> pos)

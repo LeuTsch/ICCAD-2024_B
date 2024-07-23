@@ -47,8 +47,9 @@ namespace Solver
         /////////////////////// victor's part
         void solve_initbuild();
         void solve_findfeasible();
-        vector<size_t> solve_findmaximal(const vector<size_t> &, size_t, pair<double, double>, pair<double, double>);
+        vector<size_t> solve_findmaximal(const vector<size_t> &, size_t, pair<double, double> &, pair<double, double> &);
         void feasible_cal(const vector<size_t> &);
+        void solve_test();
         ///////////////////////
 
         // friend class declaration

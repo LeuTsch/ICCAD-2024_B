@@ -43,18 +43,22 @@ int binarySearch(const Container &container, const T &key)
     return -1; // Key not found
 }
 
-double Solver::STAEngine::getDistance(const size_t &inID, const size_t &outID) const
+double Solver::STAEngine::getDistance(const size_t &inID, const size_t &outID)
 {
     assert(isInPin(inID));
     int inIDPos = binarySearch(_distanceList, inID);
     if (inIDPos != -1)
     {
-        int outIDPos = binarySearch(_distanceList[inIDPos].second, outID);
-        if (outIDPos == -1)
+        pair<size_t, double> testPair(outID, -1);
+        std::pair<std::map<size_t, double>::iterator, bool> ret = _distanceList[inIDPos].second.insert(testPair);
+        if (ret.second) // if true outID is not exist in the list, return -1
         {
             return -1;
         }
-        return _distanceList[inIDPos].second[outIDPos].second;
+        else // outID exist in the distance list
+        {
+            return _distanceList[inIDPos].second.at(outID);
+        }
     }
     return -1;
 }
@@ -92,16 +96,15 @@ void Solver::STAEngine::initEngine(const vector<vector<size_t>> &netList, const 
     {
         for (const auto &inPinID : inNet)
         {
-            pair<size_t, vector<pair<size_t, double>>> initPair;
-            vector<pair<size_t, double>> initVec;
-            initVec.reserve(512);
+            pair<size_t, std::map<size_t, double>> initPair;
+            std::map<size_t, double> initMap;
             initPair.first = inPinID;
-            initPair.second = initVec;
+            initPair.second = initMap;
             _distanceList.push_back(initPair);
         }
     }
     // sort _distanceList
-    std::sort(_distanceList.begin(), _distanceList.end(), [](pair<size_t, vector<pair<size_t, double>>> a, pair<size_t, vector<pair<size_t, double>>> b)
+    std::sort(_distanceList.begin(), _distanceList.end(), [](pair<size_t, std::map<size_t, double>> a, pair<size_t, std::map<size_t, double>> b)
               {
                   return a.first < b.first; // sort in acsending order
               });
@@ -198,26 +201,22 @@ void Solver::STAEngine::propagateForward(list<size_t> InPinIdList, const size_t 
                 }
                 for (const auto &DisPair : _distanceList[posNext].second)
                 {
-                    int outIndex_base = binarySearch(_distanceList[posBase].second, DisPair.first);
-                    if (outIndex_base != -1) // if this path already explored
+                    pair<size_t, double> testPair(DisPair.first, -1);
+                    std::pair<std::map<size_t, double>::iterator, bool> result = _distanceList[posBase].second.insert(testPair);
+                    if (!result.second) // if this path already explored (fail due to the pin has exist)
                     {
                         // and new path is longer than former one, replace it
-                        if (_distanceList[posBase].second[outIndex_base].second < d - *iteDis)
+                        if (_distanceList[posBase].second[DisPair.first] < d - *iteDis + DisPair.second)
                         {
-                            _distanceList[posBase].second[outIndex_base].second = d - *iteDis;
+                            _distanceList[posBase].second[DisPair.first] = d - *iteDis + DisPair.second;
                         }
                         continue;
                     }
-                    // else add out pin to the base pin
-                    pair<size_t, double> disPair;
-                    disPair.first = DisPair.first;
-                    disPair.second = d;
-                    _distanceList[posBase].second.push_back(disPair);
-                    // sort it
-                    std::sort(_distanceList[posBase].second.begin(), _distanceList[posBase].second.end(), [](pair<size_t, double> a, pair<size_t, double> b)
-                              {
-                                  return a.first < b.first; // sort in acsending order
-                              });
+                    else
+                    {
+                        // else add out pin to the base pin
+                        _distanceList[posBase].second[DisPair.first] = d - *iteDis + DisPair.second;
+                    }
                 }
             }
             iteDis++;
@@ -253,28 +252,21 @@ void Solver::STAEngine::propagateForward(list<size_t> InPinIdList, const size_t 
                     {
                         continue;
                     }
-                    int outIndex_base = binarySearch(_distanceList[posBase].second, outID);
-                    if (outIndex_base != -1) // if this path already explored
+                    pair<size_t, double> testPair(outID, -1);
+                    std::pair<std::map<size_t, double>::iterator, bool> result = _distanceList[posBase].second.insert(testPair);
+                    if (!result.second) // if this path already explored
                     {
                         // and new path is longer than former one, replace it
-                        if (_distanceList[posBase].second[outIndex_base].second < d - *iteDis)
+                        if (_distanceList[posBase].second[outID] < d - *iteDis)
                         {
-                            _distanceList[posBase].second[outIndex_base].second = d - *iteDis;
+                            _distanceList[posBase].second[outID] = d - *iteDis;
                         }
                         continue;
                     }
                     // add out pin to the base pin
-                    if (outIndex_base == -1)
+                    if (result.second)
                     {
-                        pair<size_t, double> disPair;
-                        disPair.first = outID;
-                        disPair.second = d;
-                        _distanceList[posBase].second.push_back(disPair);
-                        // sort it
-                        std::sort(_distanceList[posBase].second.begin(), _distanceList[posBase].second.end(), [](pair<size_t, double> a, pair<size_t, double> b)
-                                  {
-                                      return a.first < b.first; // sort in acsending order
-                                  });
+                        _distanceList[posBase].second[outID] = d - *iteDis;
                     }
                 }
                 iteDis++;
