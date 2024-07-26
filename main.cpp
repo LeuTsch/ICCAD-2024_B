@@ -33,10 +33,10 @@ int main(int argc, char *argv[])
     solver.initSolver();
     a = clock();
     cout << "Time for initialize solver: " << (a - b) << " sec" << endl;
-    solver.test();
+    solver.solve();
     b = clock();
     cout << "Time for solve: " << (b - a) << " sec" << endl;
-    // solver.printOutput(argv[argc - 1]);
+    solver.printOutput(argv[argc - 1]);
     a = clock();
     cout << "Time for output: " << (a - b) << " sec" << endl;
 
