@@ -2,7 +2,6 @@
 #include <vector>
 #include <utility>
 #include <iostream>
-#include <map>
 #include <algorithm>
 #include <cmath>
 #include <assert.h>
@@ -226,16 +225,16 @@ void Solver::legalizer::categorizeFF()
                 }
                 else if (FFposition.first > _PlaceRegionSet.at(i).xEnd)
                 {
-                    distance += std::fabs(FFposition.first - _PlaceRegionSet[i].xEnd);
+                    distance += std::fabs(FFposition.first - _PlaceRegionSet.at(i).xEnd);
                 }
                 // calculate the y distance
-                if (FFposition.second < _PlaceRegionSet[i].yStart)
+                if (FFposition.second < _PlaceRegionSet.at(i).yStart)
                 {
-                    distance += std::fabs(FFposition.second - _PlaceRegionSet[i].yStart);
+                    distance += std::fabs(FFposition.second - _PlaceRegionSet.at(i).yStart);
                 }
-                else if (FFposition.second > _PlaceRegionSet[i].yEnd)
+                else if (FFposition.second > _PlaceRegionSet.at(i).yEnd)
                 {
-                    distance += std::fabs(FFposition.second - _PlaceRegionSet[i].yEnd);
+                    distance += std::fabs(FFposition.second - _PlaceRegionSet.at(i).yEnd);
                 }
                 pair<double, size_t> initPair(distance, i);
                 dis2Region.push_back(initPair);
@@ -249,11 +248,11 @@ void Solver::legalizer::categorizeFF()
             for (const auto &disIDPair : dis2Region)
             {
                 size_t RegionID = disIDPair.second;
-                if (getFFHeight(_id2ffPtr[ffID]) <= _PlaceRegionSet[RegionID].yEnd - _PlaceRegionSet[RegionID].yStart)
+                if (getFFHeight(_id2ffPtr.at(ffID)) <= _PlaceRegionSet.at(RegionID).yEnd - _PlaceRegionSet.at(RegionID).yStart)
                 {
-                    if (getFFWidth(_id2ffPtr[ffID]) <= _PlaceRegionSet[RegionID].xEnd - _PlaceRegionSet[RegionID].xStart)
+                    if (getFFWidth(_id2ffPtr.at(ffID)) <= _PlaceRegionSet.at(RegionID).xEnd - _PlaceRegionSet.at(RegionID).xStart)
                     {
-                        _FFinPlaceRegion[RegionID].push_back(ffID);
+                        _FFinPlaceRegion.at(RegionID).push_back(ffID);
                         isInCertainRegion = true;
                         break;
                     }
@@ -266,10 +265,10 @@ void Solver::legalizer::categorizeFF()
         }
 
         // mark the related FF
-        vector<size_t> groupMemberID = getGroupMem(_id2ffPtr[ffID]);
+        vector<size_t> groupMemberID = getGroupMem(_id2ffPtr.at(ffID));
         for (const auto &id : groupMemberID)
         {
-            isSorted[id] = true;
+            isSorted.at(id) = true;
         }
     }
 }
@@ -314,9 +313,9 @@ bool Solver::legalizer::legalRegion(const list<size_t> &_FFList, struct PlaceReg
             LLy = 0;
         }
         int URx = std::ceil((upperRight.first - LFx_pos) / siteWidth);
-        if (URx > siteNum - 1)
+        if (URx > siteNum)
         {
-            URx = int(siteNum - 1);
+            URx = int(siteNum);
         }
         int URy = std::ceil((upperRight.second - LFy_pos) / siteHeight);
         if (URy > int(numPlaceRow))
@@ -358,7 +357,7 @@ bool Solver::legalizer::legalRegion(const list<size_t> &_FFList, struct PlaceReg
         }
         pair<double, double> ffPos = getFFPosition(_id2ffPtr.at(i));
         int LLx = std::floor((ffPos.first - LFx_pos) / siteWidth);
-        int ffWidth = std::ceil(getFFWidth(_id2ffPtr[i]) / siteWidth);
+        int ffWidth = std::ceil(getFFWidth(_id2ffPtr.at(i)) / siteWidth);
         // boundry checking
         if (LLx < 0)
         {
@@ -450,7 +449,7 @@ bool Solver::legalizer::legalRegion(const list<size_t> &_FFList, struct PlaceReg
         for (size_t i = 0; i < numPlaceRow; i++) // init _finalSolution
         {
             vector<pair<int, int>> initVec;
-            initVec.reserve((2 * _legalist[i].size()));
+            initVec.reserve((2 * _legalist.at(i).size()));
             _finalSolution.push_back(initVec);
         }
         // start the DP
@@ -464,7 +463,7 @@ bool Solver::legalizer::legalRegion(const list<size_t> &_FFList, struct PlaceReg
             }
             std::cout << "Start to legalize row " << i << std::endl;
             //   sort the legalist before start to legal it(some object may be added to it from lower row)
-            std::sort(_legalist[i].begin(), _legalist[i].end(), [](pair<size_t, int> a, pair<size_t, int> b)
+            std::sort(_legalist.at(i).begin(), _legalist[i].end(), [](pair<size_t, int> a, pair<size_t, int> b)
                       {
                           return a.second <= b.second; // sort in acsending order
                       });
@@ -472,8 +471,8 @@ bool Solver::legalizer::legalRegion(const list<size_t> &_FFList, struct PlaceReg
             // init totalDisplace
             totalDisplace.clear();
             totalDisplace.shrink_to_fit();
-            totalDisplace.reserve(_legalist[i].size());
-            for (size_t k = 0; k < _legalist[i].size(); k++)
+            totalDisplace.reserve(_legalist.at(i).size());
+            for (size_t k = 0; k < _legalist.at(i).size(); k++)
             {
                 vector<unsigned int> initVec(int(siteNum), -1);
                 totalDisplace.push_back(initVec);
@@ -484,9 +483,9 @@ bool Solver::legalizer::legalRegion(const list<size_t> &_FFList, struct PlaceReg
             std::cout << "G" << std::endl;
             solutionList.shrink_to_fit();
             std::cout << "G" << std::endl;
-            solutionList.reserve(_legalist[i].size());
+            solutionList.reserve(_legalist.at(i).size());
             std::cout << "G" << std::endl;
-            for (size_t k = 0; k < _legalist[i].size(); k++)
+            for (size_t k = 0; k < _legalist.at(i).size(); k++)
             {
                 vector<pair<int, int>> initList;
                 vector<vector<pair<int, int>>> initVec(int(siteNum), initList);
@@ -496,8 +495,8 @@ bool Solver::legalizer::legalRegion(const list<size_t> &_FFList, struct PlaceReg
             // init DP table
             DPtable.clear();
             DPtable.shrink_to_fit();
-            DPtable.reserve(_legalist[i].size());
-            for (size_t k = 0; k < _legalist[i].size(); k++)
+            DPtable.reserve(_legalist.at(i).size());
+            for (size_t k = 0; k < _legalist.at(i).size(); k++)
             {
                 vector<bool> initVec(int(siteNum), false);
                 DPtable.push_back(initVec);
@@ -525,7 +524,7 @@ bool Solver::legalizer::legalRegion(const list<size_t> &_FFList, struct PlaceReg
                     }
                     else
                     {
-                        heightConstraint[k] = j - i;
+                        heightConstraint.at(k) = j - i;
                         break;
                     }
                 }
@@ -536,17 +535,18 @@ bool Solver::legalizer::legalRegion(const list<size_t> &_FFList, struct PlaceReg
             {
                 // if nothing need to legal, go to next row
                 bool keepLoop = true;
-                if (_legalist[i].size() == 0)
+                bool isDeleted = false;
+                if (_legalist.at(i).size() == 0)
                 {
                     keepLoop = false;
                     break;
                 }
 
                 // construct some local variables for iteration
-                int ffHeight = std::ceil(getFFHeight(_id2ffPtr[_legalist[i].at(0).first]) / siteHeight);
-                int ffWidth = std::ceil(getFFWidth(_id2ffPtr[_legalist[i][0].first]) / siteWidth);
-                int leftLimit = std::max(0, _legalist[i][0].second - _MaxDisplacement);
-                int rightLimit = std::min(_legalist[i][0].second + _MaxDisplacement, int(siteNum) - 1);
+                int ffHeight = std::ceil(getFFHeight(_id2ffPtr.at(_legalist.at(i).at(0).first)) / siteHeight);
+                int ffWidth = std::ceil(getFFWidth(_id2ffPtr.at(_legalist.at(i).at(0).first)) / siteWidth);
+                int leftLimit = std::max(0, _legalist.at(i).at(0).second - _MaxDisplacement);
+                int rightLimit = std::min(_legalist.at(i).at(0).second + _MaxDisplacement, int(siteNum) - 1);
                 for (int k = 0; k < int(siteNum); k++) // k means you can use 0~k-th grid
                 {
                     if (k < ffWidth - 1) // space is not enough for put it in
@@ -556,10 +556,10 @@ bool Solver::legalizer::legalRegion(const list<size_t> &_FFList, struct PlaceReg
                     }
                     if (k - ffWidth + 1 < leftLimit) // the placement is not exceeding left limit
                     {
-                        DPtable[0][k] = false;
+                        DPtable.at(0).at(k) = false;
                         continue;
                     }
-                    if ((k > rightLimit) && !DPtable.at(0).at(k - 1)) // 0-th element has no solution, throw to higher row
+                    if ((k > rightLimit) && !DPtable.at(0).at(std::max(k - 1, 0))) // 0-th element has no solution, throw to higher row
                     {
                         /*
                             can implement putting it to the lower row if it is space
@@ -574,7 +574,8 @@ bool Solver::legalizer::legalRegion(const list<size_t> &_FFList, struct PlaceReg
                         {
                             _legalist.at(i + 1).push_back(_legalist.at(i).at(0));
                         }
-                        _legalist.at(i).erase(_legalist[i].begin());
+                        _legalist.at(i).erase(_legalist.at(i).begin());
+                        isDeleted = true;
                         break;
                     }
                     bool isSafe = true;
@@ -585,7 +586,7 @@ bool Solver::legalizer::legalRegion(const list<size_t> &_FFList, struct PlaceReg
                             isSafe = false;
                             break;
                         }
-                        if (heightConstraint[j] < ffHeight)
+                        if (heightConstraint.at(j) < ffHeight)
                         {
                             isSafe = false;
                             break;
@@ -594,16 +595,16 @@ bool Solver::legalizer::legalRegion(const list<size_t> &_FFList, struct PlaceReg
                     if (isSafe)
                     {
                         DPtable.at(0).at(k) = true;
-                        unsigned int displace = abs(_legalist[i][0].second + ffWidth - 1 - k);
+                        unsigned int displace = abs(_legalist.at(i).at(0).second + ffWidth - 1 - k);
                         if (totalDisplace.at(0).at(k - 1) >= displace)
                         {
-                            totalDisplace[0].at(k) = displace;
+                            totalDisplace.at(0).at(k) = displace;
                             pair<int, int> position(int(i), k - ffWidth + 1);
                             solutionList.at(0).at(k).push_back(position);
                         }
                         else
                         {
-                            totalDisplace[0].at(k) = totalDisplace[0][k - 1];
+                            totalDisplace.at(0).at(k) = totalDisplace.at(0).at(k - 1);
                             solutionList.at(0).at(k) = solutionList.at(0).at(k - 1);
                         }
                     }
@@ -612,7 +613,7 @@ bool Solver::legalizer::legalRegion(const list<size_t> &_FFList, struct PlaceReg
                         if (DPtable.at(0).at(k - 1))
                         {
                             DPtable.at(0).at(k) = true;
-                            totalDisplace[0].at(k) = totalDisplace[0][k - 1];
+                            totalDisplace.at(0).at(k) = totalDisplace.at(0).at(k - 1);
                             solutionList.at(0).at(k) = solutionList.at(0).at(k - 1);
                         }
                     }
@@ -621,7 +622,7 @@ bool Solver::legalizer::legalRegion(const list<size_t> &_FFList, struct PlaceReg
                 {
                     keepLoop = false;
                 }
-                else // item 0 cannot be legalize in row i
+                else if (!isDeleted) // item 0 cannot be legalize in row i
                 {
                     if (i + 2 > siteNum) // do not have upper row
                     {
@@ -630,9 +631,9 @@ bool Solver::legalizer::legalRegion(const list<size_t> &_FFList, struct PlaceReg
                     }
                     else
                     {
-                        _legalist.at(i + 1).push_back(_legalist[i][0]);
+                        _legalist.at(i + 1).push_back(_legalist.at(i).at(0));
                     }
-                    _legalist[i].erase(_legalist[i].begin());
+                    _legalist.at(i).erase(_legalist.at(i).begin());
                 }
                 if (!keepLoop)
                 {
@@ -645,42 +646,49 @@ bool Solver::legalizer::legalRegion(const list<size_t> &_FFList, struct PlaceReg
             }
             std::cout << "DP for remaining object" << std::endl;
             //   DP for remaining object
-            for (size_t j = 1; j < _legalist[i].size(); j++)
+            for (size_t j = 1; j < _legalist.at(i).size(); j++)
             {
                 // optimize the memory usage
                 if (j >= 2)
                 {
+                    std::cout << "K" << std::endl;
                     solutionList.at(j - 2).clear();
+                    solutionList.shrink_to_fit();
+                    std::cout << "K1" << std::endl;
                     totalDisplace.at(j - 2).clear();
+                    totalDisplace.at(j - 2).shrink_to_fit();
+                    std::cout << "K2" << std::endl;
                     DPtable.at(j - 2).clear();
+                    DPtable.shrink_to_fit();
                 }
-
+                std::cout << "KK" << std::endl;
                 while (true)
                 {
                     // construct some local variables for iteration
-                    if (j >= _legalist[i].size()) // in case the all thing are throw to the upper row
+                    if (j >= _legalist.at(i).size()) // in case the all thing are throw to the upper row
                     {
                         break;
                     }
-                    int ffHeight = std::ceil(getFFHeight(_id2ffPtr[_legalist[i].at(j).first]) / siteHeight);
-                    int ffWidth = std::ceil(getFFWidth(_id2ffPtr[_legalist[i][j].first]) / siteWidth);
-                    int leftLimit = std::max(0, _legalist[i][j].second - _MaxDisplacement);
-                    int rightLimit = std::min(_legalist[i][j].second + _MaxDisplacement, int(siteNum) - 1);
+                    int ffHeight = std::ceil(getFFHeight(_id2ffPtr.at(_legalist.at(i).at(j).first)) / siteHeight);
+                    int ffWidth = std::ceil(getFFWidth(_id2ffPtr.at(_legalist.at(i).at(j).first)) / siteWidth);
+                    int leftLimit = std::max(0, _legalist.at(i).at(j).second - _MaxDisplacement);
+                    int rightLimit = std::min(_legalist.at(i).at(j).second + _MaxDisplacement, int(siteNum) - 1);
                     bool keepLoop = true;
+                    bool hasDeleted = false;
                     for (int k = 0; k < int(siteNum); k++) // k means you can use 0~k-th grid
                     {
-                        solutionList.at(j).at(k).reserve(_legalist[i].size());
+                        solutionList.at(j).at(k).reserve(_legalist.at(i).size());
                         if (k < ffWidth - 1) // space is not enough for put it in
                         {
-                            DPtable[j][k] = false;
+                            DPtable.at(j).at(k) = false;
                             continue;
                         }
                         if (k - ffWidth + 1 < leftLimit) // the placement is not exceeding left limit
                         {
-                            DPtable[j][k] = false;
+                            DPtable.at(j).at(k) = false;
                             continue;
                         }
-                        if ((k > rightLimit) && !DPtable[j].at(k - 1)) // j-th element has no solution, throw to higher row
+                        if ((k > rightLimit) && !DPtable.at(j).at(std::max(k - 1, 0))) // j-th element has no solution, throw to higher row
                         {
                             /*
                                 can implement putting it to the lower row if it is space
@@ -693,9 +701,10 @@ bool Solver::legalizer::legalRegion(const list<size_t> &_FFList, struct PlaceReg
                             }
                             else
                             {
-                                _legalist.at(i + 1).push_back(_legalist[i][j]);
+                                _legalist.at(i + 1).push_back(_legalist.at(i).at(j));
                             }
-                            _legalist[i].erase(_legalist[i].begin() + j);
+                            _legalist.at(i).erase(_legalist.at(i).begin() + j);
+                            hasDeleted = true;
                             break;
                         }
                         bool isSafe = true; // see whether k ~ k-ffWidth have any ostacle
@@ -706,22 +715,22 @@ bool Solver::legalizer::legalRegion(const list<size_t> &_FFList, struct PlaceReg
                                 isSafe = false;
                                 break;
                             }
-                            if (heightConstraint[l] < ffHeight)
+                            if (heightConstraint.at(l) < ffHeight)
                             {
                                 isSafe = false;
                                 break;
                             }
                         }
-                        if (isSafe && DPtable.at(j - 1).at(k - ffWidth))
+                        if (isSafe && DPtable.at(j - 1).at(std::max(k - ffWidth, 0)))
                         {
                             DPtable.at(j).at(k) = true;
                             unsigned int displace = abs(_legalist.at(i).at(j).second + ffWidth - 1 - k);
-                            if (totalDisplace.at(j).at(k - 1) >= displace + totalDisplace.at(j - 1).at(k - ffWidth))
+                            if (totalDisplace.at(j).at(k - 1) >= displace + totalDisplace.at(j - 1).at(std::max(k - ffWidth, 0)))
                             {
-                                totalDisplace.at(j).at(k) = displace + totalDisplace[j - 1][k - ffWidth];
+                                totalDisplace.at(j).at(k) = displace + totalDisplace.at(j - 1).at(std::max(k - ffWidth, 0));
                                 pair<int, int> position(int(i), k - ffWidth + 1);
-                                solutionList.at(j).at(k) = solutionList.at(j - 1).at(k - ffWidth);
-                                solutionList[j][k].push_back(position);
+                                solutionList.at(j).at(k) = solutionList.at(j - 1).at(std::max(k - ffWidth, 0));
+                                solutionList.at(j).at(k).push_back(position);
                             }
                             else
                             {
@@ -739,12 +748,13 @@ bool Solver::legalizer::legalRegion(const list<size_t> &_FFList, struct PlaceReg
                             }
                         }
                     }
-                    if (DPtable[j].at(int(siteNum) - 1))
+                    if (DPtable.at(j).at(int(siteNum) - 1))
                     {
                         keepLoop = false;
                     }
-                    else // item j cannot be legalize in row i
+                    else if (!hasDeleted) // item j cannot be legalize in row i
                     {
+                        std::cout << "QQ" << std::endl;
                         if (i + 2 > numPlaceRow) // do not have upper row
                         {
                             Solvable = false;
@@ -753,9 +763,11 @@ bool Solver::legalizer::legalRegion(const list<size_t> &_FFList, struct PlaceReg
                         }
                         else
                         {
-                            _legalist.at(i + 1).push_back(_legalist[i][j]);
+                            std::cout << "C" << std::endl;
+                            _legalist.at(i + 1).push_back(_legalist.at(i).at(j));
                         }
-                        _legalist[i].erase(_legalist[i].begin() + j);
+                        std::cout << "AQA" << std::endl;
+                        _legalist.at(i).erase(_legalist.at(i).begin() + j);
                     }
                     if (!keepLoop)
                     {
@@ -798,23 +810,25 @@ bool Solver::legalizer::legalRegion(const list<size_t> &_FFList, struct PlaceReg
             //   as the assign for one row complete,
             //   we start to record the solution and start the legalize for next row
             int counter = 0;
-            if (_legalist[i].empty())
+            if (_legalist.at(i).empty())
             {
                 continue;
             }
-            for (auto it = solutionList.at(_legalist[i].size() - 1)[int(siteNum) - 1].begin();
+            std::cout << "G" << std::endl;
+            for (auto it = solutionList.at(_legalist.at(i).size() - 1).at(int(siteNum) - 1).begin();
                  it != solutionList[_legalist[i].size() - 1][int(siteNum) - 1].end(); it++)
             {
                 // std::cout << "counter = " << counter << std::endl;
-                int ffHeight = std::ceil(getFFHeight(_id2ffPtr.at(_legalist[i][counter].first)) / siteHeight);
-                int ffWidth = std::ceil(getFFWidth(_id2ffPtr[_legalist[i][counter].first]) / siteWidth);
-                // std::cout << "FFName = " << _id2ffPtr[_legalist[i][counter].first]->getName() << std::endl;
+                int ffHeight = std::ceil(getFFHeight(_id2ffPtr.at(_legalist.at(i).at(counter).first)) / siteHeight);
+                int ffWidth = std::ceil(getFFWidth(_id2ffPtr.at(_legalist.at(i).at(counter).first)) / siteWidth);
+                // std::cout << "FFName = " << _id2ffPtr.at(_legalist.at(i).at(counter).first)->getName() << std::endl;
                 // std::cout << "ffHeight = " << ffHeight << std::endl;
                 // std::cout << "ffWidth = " << ffWidth << std::endl;
                 // std::cout << "(*it).first = " << (*it).first << std::endl;
                 // std::cout << "(*it).second = " << (*it).second << std::endl;
-                _finalSolution[i].push_back(*it);
-                // record the space occupied by the placed ff
+                _finalSolution.at(i).push_back(*it);
+                // std::cout << "K" << std::endl;
+                //  record the space occupied by the placed ff
                 for (int y = 0; y < ffHeight; y++)
                 {
                     for (int x = 0; x < ffWidth; x++)
@@ -840,18 +854,18 @@ bool Solver::legalizer::legalRegion(const list<size_t> &_FFList, struct PlaceReg
                 for (size_t j = 0; j < _legalist[i].size(); j++)
                 {
                     pair<double, double> position;
-                    position.second = LFy_pos + double(_finalSolution[i][j].first) * siteHeight;
-                    position.first = LFx_pos + double(_finalSolution[i][j].second) * siteWidth;
+                    position.second = LFy_pos + double(_finalSolution.at(i).at(j).first) * siteHeight;
+                    position.first = LFx_pos + double(_finalSolution.at(i).at(j).second) * siteWidth;
                     // set all grouped instance's position to the result
-                    vector<size_t> member = getGroupMem(_id2ffPtr[_legalist[i][j].first]);
+                    vector<size_t> member = getGroupMem(_id2ffPtr.at(_legalist.at(i).at(j).first));
                     for (const auto id : member)
                     {
-                        setFFPosition(_id2ffPtr[id], position);
+                        setFFPosition(_id2ffPtr.at(id), position);
                     }
                 }
             }
             // std::cout << "legalization successfully. \n"
-            // << std::endl;
+            //           << std::endl;
             return true;
         }
     }
