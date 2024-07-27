@@ -170,6 +170,7 @@ void Solver::legalizer::categorizePlaceRegion()
             }
         }
     }
+    _PlaceRegionSet.shrink_to_fit();
 }
 
 void Solver::legalizer::categorizeFF()
@@ -273,7 +274,7 @@ void Solver::legalizer::categorizeFF()
 bool Solver::legalizer::legalRegion(const list<size_t> &_FFList, struct PlaceRegion *_ptr_placeRegion)
 {
     int _MaxIteration = 30;
-    // std::cout << "start to get placement row information." << std::endl;
+    std::cout << "start to get placement row information." << std::endl;
     //  start the algorithm part
     //  define some constant for the algorithm
     size_t numPlaceRow = int((_ptr_placeRegion->yEnd - _ptr_placeRegion->yStart) / _ptr_placeRegion->siteHight);
@@ -283,7 +284,7 @@ bool Solver::legalizer::legalRegion(const list<size_t> &_FFList, struct PlaceReg
     double LFx_pos = _ptr_placeRegion->xStart;
     double LFy_pos = _ptr_placeRegion->yStart;
 
-    // std::cout << "step 1: construct the matrix for placement grid." << std::endl;
+    std::cout << "step 1: construct the matrix for placement grid." << std::endl;
     //  step 1: construct the matrix for placement grid
     vector<vector<bool>> _availPosTable; // if the grid point is available, the value would be true
     vector<vector<pair<size_t, int>>> _listWait4Legal;
@@ -334,7 +335,7 @@ bool Solver::legalizer::legalRegion(const list<size_t> &_FFList, struct PlaceReg
         initVec.reserve(512);
         _listWait4Legal.push_back(initVec);
     }
-    // std::cout << "step 2: throw the FF to the nearests placement grid and sort it to placement row." << std::endl;
+    std::cout << "step 2: throw the FF to the nearests placement grid and sort it to placement row." << std::endl;
     //  step 2: throw all FF to the nearests placement grid and sort it to placement row
     vector<bool> check_list4ffInit(_id2ffPtr.size(), false);
     for (const auto &id : _FFList)
@@ -392,7 +393,7 @@ bool Solver::legalizer::legalRegion(const list<size_t> &_FFList, struct PlaceReg
     // sort the wait list in the order of x index
     for (size_t i = 0; i < _listWait4Legal.size(); i++)
     {
-        std::sort(_listWait4Legal[i].begin(), _listWait4Legal[i].end(), [](pair<size_t, int> a, pair<size_t, int> b)
+        std::sort(_listWait4Legal[i].begin(), _listWait4Legal[i].end(), [](const pair<size_t, int> &a, const pair<size_t, int> &b)
                   {
                       return a.second < b.second; // sort in acsending order
                   });
@@ -406,15 +407,15 @@ bool Solver::legalizer::legalRegion(const list<size_t> &_FFList, struct PlaceReg
 
     // end test*/
 
-    // std::cout << "step 3: DP from lowest row to the highest." << std::endl;
+    std::cout << "step 3: DP from lowest row to the highest." << std::endl;
     //  step 3: DP from lowest row to the highest
     int iterCount = 1; // use for iteration counter
     while (iterCount <= _MaxIteration)
     {
-        // std::cout << "Start the iteration: " << iterCount << std::endl;
+        std::cout << "Start the iteration: " << iterCount << std::endl;
         iterCount++;
         // init some info for algorithm
-        int _MaxDisplacement = 100 * iterCount;
+        int _MaxDisplacement = 500 * iterCount;
         vector<vector<pair<size_t, int>>> _legalist = _listWait4Legal;
         vector<vector<pair<int, int>>> _finalSolution(numPlaceRow); // pair<y index, x index>
         vector<vector<bool>> _ffOccupation;                         // record the position occupied by ff
@@ -432,30 +433,38 @@ bool Solver::legalizer::legalRegion(const list<size_t> &_FFList, struct PlaceReg
         }
         // start the DP
         bool Solvable = true;
-        // std::cout << "Start DP process" << std::endl;
+        std::cout << "Start DP process" << std::endl;
         for (size_t i = 0; i < numPlaceRow; i++)
         {
             if (_legalist[i].empty())
             {
                 continue;
             }
-            // std::cout << "Start to legalize row " << i << std::endl;
+            std::cout << "Start to legalize row " << i << std::endl;
             //   sort the legalist before start to legal it(some object may be added to it from lower row)
-            std::sort(_legalist[i].begin(), _legalist[i].end(), [](pair<size_t, int> a, pair<size_t, int> b)
+            std::sort(_legalist[i].begin(), _legalist[i].end(), [](const pair<size_t, int> &a, const pair<size_t, int> &b)
                       {
                           return a.second <= b.second; // sort in acsending order
                       });
-            vector<vector<bool>> DPtable;                                // DPtable[ i-th object in legalist ][ position ]
+            std::cout << "A" << std::endl;
+            vector<vector<bool>> DPtable; // DPtable[ i-th object in legalist ][ position ]
+            std::cout << int(siteNum) << std::endl;
             vector<int> heightConstraint(int(siteNum), numPlaceRow - i); // record the available height for x position
-            vector<vector<vector<pair<int, int>>>> solutionList;         // pair<int y, int x>
-            vector<vector<unsigned int>> totalDisplace;                  // totalDisplace[# of object][last position]
+            std::cout << "AAA" << std::endl;
+            vector<vector<vector<pair<int, int>>>> solutionList; // pair<int y, int x>
+            vector<vector<unsigned int>> totalDisplace;          // totalDisplace[# of object][last position]
+            std::cout << "AA" << std::endl;
+            std::cout << _legalist[i].size() << std::endl;
             // init totalDisplace
+            std::cout << "G" << std::endl;
             totalDisplace.reserve(_legalist[i].size());
+            std::cout << "GG" << std::endl;
             for (size_t k = 0; k < _legalist[i].size(); k++)
             {
                 vector<unsigned int> initVec(int(siteNum), -1);
                 totalDisplace.push_back(initVec);
             }
+            std::cout << "B" << std::endl;
             // init solutionList
             solutionList.reserve(_legalist[i].size());
             for (size_t k = 0; k < _legalist[i].size(); k++)
@@ -464,6 +473,7 @@ bool Solver::legalizer::legalRegion(const list<size_t> &_FFList, struct PlaceReg
                 vector<vector<pair<int, int>>> initVec(int(siteNum), initList);
                 solutionList.push_back(initVec);
             }
+            std::cout << "BB" << std::endl;
             // init DP table
             DPtable.reserve(_legalist[i].size());
             for (size_t k = 0; k < _legalist[i].size(); k++)
@@ -471,6 +481,7 @@ bool Solver::legalizer::legalRegion(const list<size_t> &_FFList, struct PlaceReg
                 vector<bool> initVec(int(siteNum), false);
                 DPtable.push_back(initVec);
             }
+            std::cout << "BBB" << std::endl;
             // update the heightConstraint for  this placement row
             for (int k = 0; k < int(siteNum); k++)
             {
@@ -487,7 +498,7 @@ bool Solver::legalizer::legalRegion(const list<size_t> &_FFList, struct PlaceReg
                     }
                 }
             }
-            // std::cout << "Start to construct table for the first item in legalist " << std::endl;
+            std::cout << "Start to construct table for the first item in legalist " << std::endl;
             //   start to construct table for the first item in legalist
             while (true)
             {
@@ -598,7 +609,7 @@ bool Solver::legalizer::legalRegion(const list<size_t> &_FFList, struct PlaceReg
             {
                 break;
             }
-            // std::cout << "DP for remaining object" << std::endl;
+            std::cout << "DP for remaining object" << std::endl;
             //   DP for remaining object
             for (size_t j = 1; j < _legalist[i].size(); j++)
             {
@@ -606,8 +617,11 @@ bool Solver::legalizer::legalRegion(const list<size_t> &_FFList, struct PlaceReg
                 if (j >= 2)
                 {
                     solutionList[j - 2].clear();
+                    solutionList[j - 2].shrink_to_fit();
                     totalDisplace[j - 2].clear();
+                    totalDisplace[j - 2].shrink_to_fit();
                     DPtable[j - 2].clear();
+                    DPtable[j - 2].shrink_to_fit();
                 }
 
                 while (true)
@@ -727,7 +741,7 @@ bool Solver::legalizer::legalRegion(const list<size_t> &_FFList, struct PlaceReg
             {
                 break;
             }
-            // std::cout << "successfully solve row " << i << ", record the solution" << std::endl;
+            std::cout << "successfully solve row " << i << ", record the solution" << std::endl;
 
             // test!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
             /*std::cout << "solutionList.size = " << solutionList.size() << std::endl;
@@ -782,7 +796,7 @@ bool Solver::legalizer::legalRegion(const list<size_t> &_FFList, struct PlaceReg
             }
         }
 
-        // std::cout << "step 4: assign the result." << std::endl;
+        std::cout << "step 4: assign the result." << std::endl;
         //  step 4: assign the result. If can't be solved, relax the constraint and goto step 3.
         if (!Solvable)
         {

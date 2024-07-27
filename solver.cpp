@@ -881,18 +881,18 @@ void Solver::Solver::printOutput(const string &outFileName)
 void Solver::Solver::test()
 {
     // initSolver();
-    /*legal test
+    // legal test
     legalize();
-    for (size_t i = 0; i < _FF_D_arr.size(); i++)
+    /*for (size_t i = 0; i < _FF_D_arr.size(); i++)
     {
         pair<double, double> pos = getFFPosition(&_FF_D_arr[i]);
         std::cout << _FF_D_arr[i].getName() << ": " << pos.first << " " << pos.second << std::endl;
     }*/
 
-    // STA test
+    /*// STA test
     size_t in = _Name_to_ID.at("C9/IN");
     size_t out = _Name_to_ID.at("C12/OUT");
-    std::cout << _ptr_STAEngine->getDistance(in, out) << std::endl;
+    std::cout << _ptr_STAEngine->getDistance(in, out) << std::endl;*/
 }
 
 vector<size_t> Solver::Solver::prePlace(const vector<size_t> &ff_group, size_t essential_ID, pair<double, double> pos)
