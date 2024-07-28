@@ -550,14 +550,14 @@ void Solver::Solver::solve()
     { /*run through clk*/
 
         vector<Inst::feasible_coor> feas_x_clk;
-        feas_x_clk.reserve(_FF_D_arr.size());
+        feas_x_clk.reserve(_FF_D_arr.size() * 2);
         vector<Inst::feasible_coor> feas_y_clk;
-        feas_y_clk.reserve(_FF_D_arr.size());
+        feas_y_clk.reserve(_FF_D_arr.size() * 2);
 
         for (int i = 0; i < _FF_D_arr.size(); i++)
         {
 
-            if (_FF_D_arr[i].getClk() == k)
+            if ((_FF_D_arr[i].getClk() == k) && (_FF_D_arr[i].hasfeasible == 1))
             {
                 // collect
                 // may collect the empty value of no-feasible FF
