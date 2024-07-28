@@ -373,7 +373,7 @@ bool Solver::legalizer::legalRegion(const list<size_t> &_FFList, struct PlaceReg
             LLy++;
         }
 
-        int ffHeight = std::floor(getFFHeight(_id2ffPtr.at(i)) / siteHeight);
+        int ffHeight = std::ceil(getFFHeight(_id2ffPtr.at(i)) / siteHeight);
         // boundry checking
         if (LLy < 0)
         {
