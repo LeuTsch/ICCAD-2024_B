@@ -347,7 +347,6 @@ bool Solver::legalizer::legalRegion(const list<size_t> &_FFList, struct PlaceReg
     for (const auto &id : _FFList)
     {
         check_list4ffInit.at(id) = true;
-        std::cout << "TEST1" << std::endl;
     }
     std::cout << "TEST1 DONE" << std::endl;
     for (size_t i = 0; i < _id2ffPtr.size(); i++)
@@ -371,11 +370,10 @@ bool Solver::legalizer::legalRegion(const list<size_t> &_FFList, struct PlaceReg
             LLx = int(siteNum - ffWidth);
         }
         int LLy = std::floor((ffPos.second - LFy_pos) / siteHeight);
-        if (ffPos.second - LFy_pos > siteHeight / 2)
+        if (ffPos.second - LFy_pos - (double(LLy) * siteHeight) > siteHeight / 2)
         {
             LLy++;
         }
-
         int ffHeight = std::ceil(getFFHeight(_id2ffPtr.at(i)) / siteHeight);
         // boundry checking
         if (LLy < 0)
@@ -387,22 +385,13 @@ bool Solver::legalizer::legalRegion(const list<size_t> &_FFList, struct PlaceReg
             LLy = int(numPlaceRow - ffHeight);
         }
         ffPos.first = LFx_pos + (double(LLx) * siteWidth);
-        ffPos.second = LFy_pos + (double(LLy) * siteHeight);
+        ffPos.second = LFy_pos + (double(LLy) * siteHeight); 
         setFFPosition(_id2ffPtr.at(i), ffPos);
         std::cout << "TEST3" << std::endl;
         // add to waiting list
         pair<size_t, int> pr(i, LLx);
         std::cout << "size: " << _listWait4Legal.size() << ", idx: " << LLy << std::endl;
         _listWait4Legal.at(LLy).push_back(pr);
-        std::cout << "TEST4" << std::endl;
-        // if group with other, mark on them in the check list
-        vector<size_t> groupMemberID = getGroupMem(_id2ffPtr.at(i)); // this function should return the ID(position in _id2ffPtr) related to this ff
-
-        std::cout << "TEST5" << std::endl;
-        for (const auto &id : groupMemberID)
-        {
-            check_list4ffInit.at(id) = true;
-        }
         std::cout << "TEST6" << std::endl;
     }
     std::cout << "TEST2 DONE" << std::endl;
@@ -439,7 +428,7 @@ bool Solver::legalizer::legalRegion(const list<size_t> &_FFList, struct PlaceReg
         // std::cout << "Start the iteration: " << iterCount << std::endl;
         iterCount++;
         // init some info for algorithm
-        int _MaxDisplacement = int(std::ceil(siteHeight / siteWidth)) * iterCount;
+        int _MaxDisplacement = int(std::ceil(siteHeight / siteWidth)) * iterCount * iterCount;
         _legalist.clear();
         _legalist.shrink_to_fit();
         _legalist = _listWait4Legal;
@@ -480,7 +469,7 @@ bool Solver::legalizer::legalRegion(const list<size_t> &_FFList, struct PlaceReg
                 continue;
             }
             std::cout << "Start to legalize row " << i << std::endl;
-            // test!!!!!!!!!!!!!!!!!!!
+            /*// test!!!!!!!!!!!!!!!!!!!
             for (const auto &aaa : _legalist.at(i))
             {
 
@@ -490,16 +479,15 @@ bool Solver::legalizer::legalRegion(const list<size_t> &_FFList, struct PlaceReg
                     return false;
                 }
             }
+            // end test*/
 
-            // end test
             //   sort the legalist before start to legal it(some object may be added to it from lower row)
             std::sort(_legalist.at(i).rbegin(), _legalist.at(i).rend(), [](const pair<size_t, int> &a, const pair<size_t, int> &b)
                       {
                           return a.second > b.second; // sort in acsending order
                       });
 
-            std::cout << "A" << std::endl;
-            // test!!!!!!!!!!!!!!!!!!!
+            /*// test!!!!!!!!!!!!!!!!!!!
             for (const auto &aaa : _legalist.at(i))
             {
 
@@ -510,7 +498,8 @@ bool Solver::legalizer::legalRegion(const list<size_t> &_FFList, struct PlaceReg
                 }
             }
 
-            // end test
+            // end test*/
+
             // init totalDisplace
             totalDisplace.clear();
             totalDisplace.shrink_to_fit();
@@ -586,6 +575,9 @@ bool Solver::legalizer::legalRegion(const list<size_t> &_FFList, struct PlaceReg
                 }
                 std::cout << "G" << std::endl;
                 std::cout << "_legalist.at(i).at(0).first = " << _legalist.at(i).at(0).first << std::endl;
+                std::cout << "_Name = " <<_id2ffPtr.at(_legalist.at(i).at(0).first)->getName() << std::endl;
+                pair<double, double> p = getFFPosition(_id2ffPtr.at(_legalist.at(i).at(0).first));
+                std::cout <<p.first<< " " <<p.second << std::endl;
                 // construct some local variables for iteration
                 int ffHeight = std::ceil(getFFHeight(_id2ffPtr.at(_legalist.at(i).at(0).first)) / siteHeight);
                 int ffWidth = std::ceil(getFFWidth(_id2ffPtr.at(_legalist.at(i).at(0).first)) / siteWidth);
@@ -604,12 +596,12 @@ bool Solver::legalizer::legalRegion(const list<size_t> &_FFList, struct PlaceReg
                         DPtable.at(0).at(k) = false;
                         continue;
                     }
-                    if ((k > rightLimit) && !DPtable.at(0).at(std::max(k - 1, 0))) // 0-th element has no solution, throw to higher row
+                    if ((k - ffWidth + 1> rightLimit) && !DPtable.at(0).at(std::max(k - 1, 0))) // 0-th element has no solution, throw to higher row
                     {
                         /*
                             can implement putting it to the lower row if it is space
                         */
-                        if (i + 2 >= numPlaceRow) // do not have upper row
+                        if (i + 1 >= numPlaceRow) // do not have upper row
                         {
                             Solvable = false;
                             keepLoop = false;
@@ -683,18 +675,21 @@ bool Solver::legalizer::legalRegion(const list<size_t> &_FFList, struct PlaceReg
                 {
                     keepLoop = false;
                 }
-                else if (!isDeleted) // item 0 cannot be legalize in row i
+                else 
                 {
-                    if (i + 2 > siteNum) // do not have upper row
+                    if (!isDeleted) // item 0 cannot be legalize in row i
                     {
-                        Solvable = false;
-                        keepLoop = false;
+                        if (i + 1 >= numPlaceRow) // do not have upper row
+                        {
+                            Solvable = false;
+                            keepLoop = false;
+                        }
+                        else
+                        {
+                            _legalist.at(i + 1).push_back(_legalist.at(i).at(0));
+                        }
+                        _legalist.at(i).erase(_legalist.at(i).begin());
                     }
-                    else
-                    {
-                        _legalist.at(i + 1).push_back(_legalist.at(i).at(0));
-                    }
-                    _legalist.at(i).erase(_legalist.at(i).begin());
                 }
                 if (!keepLoop)
                 {
@@ -749,12 +744,12 @@ bool Solver::legalizer::legalRegion(const list<size_t> &_FFList, struct PlaceReg
                             DPtable.at(j).at(k) = false;
                             continue;
                         }
-                        if ((k > rightLimit) && !DPtable.at(j).at(std::max(k - 1, 0))) // j-th element has no solution, throw to higher row
+                        if ((k - ffWidth + 1 > rightLimit) && !DPtable.at(j).at(std::max(k - 1, 0))) // j-th element has no solution, throw to higher row
                         {
                             /*
                                 can implement putting it to the lower row if it is space
                             */
-                            if (i + 2 > numPlaceRow) // do not have upper row
+                            if (i + 1 >= numPlaceRow) // do not have upper row
                             {
                                 Solvable = false;
                                 keepLoop = false;
@@ -785,6 +780,7 @@ bool Solver::legalizer::legalRegion(const list<size_t> &_FFList, struct PlaceReg
                         if (isSafe && DPtable.at(j - 1).at(std::max(k - ffWidth, 0)))
                         {
                             DPtable.at(j).at(k) = true;
+                            std::cout << "Hit" << std::endl;
                             unsigned int displace = abs(_legalist.at(i).at(j).second + ffWidth - 1 - k);
                             if (totalDisplace.at(j).at(k - 1) >= displace + totalDisplace.at(j - 1).at(std::max(k - ffWidth, 0)))
                             {
@@ -813,22 +809,25 @@ bool Solver::legalizer::legalRegion(const list<size_t> &_FFList, struct PlaceReg
                     {
                         keepLoop = false;
                     }
-                    else if (!hasDeleted) // item j cannot be legalize in row i
+                    else 
                     {
                         std::cout << "QQ" << std::endl;
-                        if (i + 2 > numPlaceRow) // do not have upper row
+                        if (!hasDeleted) // item j cannot be legalize in row i
                         {
-                            Solvable = false;
-                            keepLoop = false;
-                            break;
+                            if (i + 1 >= numPlaceRow) // do not have upper row
+                            {
+                                Solvable = false;
+                                keepLoop = false;
+                                break;
+                            }
+                            else
+                            {
+                                std::cout << "C" << std::endl;
+                                _legalist.at(i + 1).push_back(_legalist.at(i).at(j));
+                            }
+                            std::cout << "AQA" << std::endl;
+                            _legalist.at(i).erase(_legalist.at(i).begin() + j);
                         }
-                        else
-                        {
-                            std::cout << "C" << std::endl;
-                            _legalist.at(i + 1).push_back(_legalist.at(i).at(j));
-                        }
-                        std::cout << "AQA" << std::endl;
-                        _legalist.at(i).erase(_legalist.at(i).begin() + j);
                     }
                     if (!keepLoop)
                     {
@@ -875,7 +874,6 @@ bool Solver::legalizer::legalRegion(const list<size_t> &_FFList, struct PlaceReg
             {
                 continue;
             }
-            std::cout << "G" << std::endl;
             for (auto it = solutionList.at(_legalist.at(i).size() - 1).at(int(siteNum) - 1).begin();
                  it != solutionList[_legalist[i].size() - 1][int(siteNum) - 1].end(); it++)
             {
