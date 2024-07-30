@@ -104,7 +104,7 @@ namespace Solver
         double getFFWidth(Inst::FF_D *) const;
         double getFFHeight(Inst::FF_D *) const;
         void setFFPosition(Inst::FF_D *, pair<double, double> &);
-        vector<size_t> getGroupMem(Inst::FF_D *) const;
+        vector<size_t> getGroupMem(Inst::FF_D *) const;  // return the index in FF_D_arr related to this ff
 
         // the function should only be called in initialization
         void findFanin(const FF_D_ID &);

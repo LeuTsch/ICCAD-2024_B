@@ -108,6 +108,8 @@ namespace Inst
 
         ////////////////////////////////// added by victor
         // store the feasible region in D
+        bool hasfeasible;
+
         feasible_coor fea_x_s;
         feasible_coor fea_x_e;
         feasible_coor fea_y_s;
