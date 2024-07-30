@@ -4,7 +4,7 @@ COBJS     = $(addsuffix .o, $(basename $(CSRCS)))
 
 CXX       = g++
 CFLAGS    = -g -Wall
-#CFLAGS    = -O3 -Wall
+CFLAGS    = -O3 -Wall
 EXTINCDIR = 
 LIBDIR    = 
 ECHO      = /bin/echo
