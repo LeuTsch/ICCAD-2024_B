@@ -1126,7 +1126,7 @@ void Solver::Solver::printOutput(const string &outFileName)
         outputFile << _FF_Q_arr[i].getOriName() << " map " << _FF_Q_arr[i].getName() << "\n";
         // find the clk name for origin and new pin
         string newInstName = _FF_D_arr[i].getName().substr(0, _FF_D_arr[i].getName().find('/'));
-        string oriInstName = _FF_D_arr[i].getOriName().substr(0, _FF_D_arr[i].getName().find('/'));
+        string oriInstName = _FF_D_arr[i].getOriName().substr(0, _FF_D_arr[i].getOriName().find('/'));
         string oriCLKName;
         string newCLKName;
         for (const auto &name : _ptr_Parser->_flipflopLib[_FF_D_arr[i].OriFF_type].PinName)
