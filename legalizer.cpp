@@ -420,7 +420,7 @@ bool Solver::legalizer::legalRegion(const list<size_t> &_FFList, struct PlaceReg
     int iterCount = 1; // use for iteration counter
     while (iterCount <= _MaxIteration)
     {
-        std::cout << "Start the iteration: " << iterCount << std::endl;
+        // std::cout << "Start the iteration: " << iterCount << std::endl;
         iterCount++;
         // init some info for algorithm
         int _MaxDisplacement = int(std::ceil(siteHeight / siteWidth)) * iterCount * iterCount * 5;
@@ -456,7 +456,7 @@ bool Solver::legalizer::legalRegion(const list<size_t> &_FFList, struct PlaceReg
         }
         // start the DP
         bool Solvable = true;
-        std::cout << "Start DP process" << std::endl;
+        // std::cout << "Start DP process" << std::endl;
         for (size_t i = 0; i < numPlaceRow; i++)
         {
             if (_legalist.at(i).empty())
@@ -504,7 +504,6 @@ bool Solver::legalizer::legalRegion(const list<size_t> &_FFList, struct PlaceReg
                 vector<unsigned int> initVec(int(siteNum), -1);
                 totalDisplace.push_back(initVec);
             }
-            std::cout << "B" << std::endl;
             // init solutionList
             solutionList.clear();
             solutionList.shrink_to_fit();
@@ -515,7 +514,6 @@ bool Solver::legalizer::legalRegion(const list<size_t> &_FFList, struct PlaceReg
                 vector<vector<pair<int, int>>> initVec(int(siteNum), initList);
                 solutionList.push_back(initVec);
             }
-            std::cout << "BB" << std::endl;
             // init DP table
             DPtable.clear();
             DPtable.shrink_to_fit();
