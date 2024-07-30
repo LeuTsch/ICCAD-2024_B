@@ -173,7 +173,6 @@ void Solver::legalizer::categorizePlaceRegion()
             }
         }
     }
-    _PlaceRegionSet.shrink_to_fit();
 }
 
 void Solver::legalizer::categorizeFF()
@@ -277,9 +276,9 @@ void Solver::legalizer::categorizeFF()
 bool Solver::legalizer::legalRegion(const list<size_t> &_FFList, struct PlaceRegion *_ptr_placeRegion)
 {
     int _MaxIteration = 30;
-    // std::cout << "start to get placement row information." << std::endl;
-    //    start the algorithm part
-    //    define some constant for the algorithm
+    std::cout << "start to get placement row information." << std::endl;
+    //   start the algorithm part
+    //   define some constant for the algorithm
     size_t numPlaceRow = int((_ptr_placeRegion->yEnd - _ptr_placeRegion->yStart) / _ptr_placeRegion->siteHight);
     double siteHeight = _ptr_placeRegion->siteHight;
     double siteWidth = _ptr_placeRegion->siteWidth;
