@@ -1174,6 +1174,7 @@ vector<size_t> Solver::Solver::prePlace(const vector<size_t> &ff_group, size_t e
     // step1: choose the ff size from ff lib
     int maxSize = 0;
     size_t fftype = 0;
+    double area = 0;
     // here we choose the first FF with largest available size in the ff lib
     for (size_t i = 0; i < _ptr_Parser->_flipflopLib.size(); i++)
     {
@@ -1181,6 +1182,12 @@ vector<size_t> Solver::Solver::prePlace(const vector<size_t> &ff_group, size_t e
         {
             maxSize = _ptr_Parser->_flipflopLib[i].Bit;
             fftype = i;
+            area = _ptr_Parser->_flipflopLib[i].Hight * _ptr_Parser->_flipflopLib[i].Width;
+        }
+        if (_ptr_Parser->_flipflopLib[i].Bit == maxSize && area > _ptr_Parser->_flipflopLib[i].Hight * _ptr_Parser->_flipflopLib[i].Width)
+        {
+            fftype = i;
+            area = _ptr_Parser->_flipflopLib[i].Hight * _ptr_Parser->_flipflopLib[i].Width;
         }
     }
 
