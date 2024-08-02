@@ -102,6 +102,7 @@ namespace Inst
         // data part
         bool grouped;
         double slack;
+        double maxSlack;
         size_t FF_type;
         size_t OriFF_type;
         // size_t ID_to_Q;
@@ -121,7 +122,7 @@ namespace Inst
 
         //////////////////////////////////
 
-        vector<size_t> faninCone;
+        vector<size_t> faninCone;      // store the global ID of fanin FF_Q
         vector<size_t> outGate2Fanin;  // store the gate out pin ID for the path to the fanin FF_Q in the same index in faninCone
                                        // if two FF are connect directly, the id would be _ID_to_instance.size()
         vector<size_t> inGate2Fanin;   // store the gate in pin ID for the path to the fanin FF_Q in the same index in faninCone

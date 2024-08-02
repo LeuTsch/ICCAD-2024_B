@@ -81,8 +81,13 @@ namespace Solver
 
         // function part
         vector<size_t> prePlace(const vector<FF_D_ID> &, size_t, pair<double, double>); // return the FF_D_ID be grouped
-        void slackDistribute(const double);                                             // should be called before mbff clustering
+        vector<double> getSlack2ConnectedFF(const size_t &);                            // return the slack to the connected FF, the input should be global ID of FF_D or FF_Q
+                                                                                        // if the the connected FF has grouped, return the 100% of remaining slack. Otherwise, it would be 50%
         void legalize();
+
+        ////////////// no need to use it more(if you would use the slack in Inst::FF_D or Inst::FF_Q)
+        void slackDistribute(const double); // no need to use it more
+        /////////////
 
         // interface
         pair<double, double> findPinPosition(const size_t &) const;
@@ -90,6 +95,7 @@ namespace Solver
         vector<pair<double, double>> getAdjacentPinPosition(size_t &) const; // the input should be ID of Q, or D pin. Return the position of related pin
 
         // auxilary function
+        void findMaxSlack(); // calculate the max capacity(the critical path + slack) for all FF_D
         vector<struct PlacementRow> getPlacementRow() const { return _PlaceRow; };
         bool placementRowIsUniform(vector<struct PlacementRow> &) const;
         size_t getPlaceRowNum() const { return _PlaceRow.size(); };
@@ -104,7 +110,7 @@ namespace Solver
         double getFFWidth(Inst::FF_D *) const;
         double getFFHeight(Inst::FF_D *) const;
         void setFFPosition(Inst::FF_D *, pair<double, double> &);
-        vector<size_t> getGroupMem(Inst::FF_D *) const;  // return the index in FF_D_arr related to this ff
+        vector<size_t> getGroupMem(Inst::FF_D *) const; // return the index in FF_D_arr related to this ff
 
         // the function should only be called in initialization
         void findFanin(const FF_D_ID &);

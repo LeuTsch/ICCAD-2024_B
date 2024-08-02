@@ -333,6 +333,10 @@ void Solver::Solver::initSolver()
     assert(_ptr_legalizer != nullptr);
     _ptr_legalizer->setSolverPtr(this);
 
+    // step9: calculate the Max slack for every FF
+    std::cout << "step9: calculate the Max slack for every FF" << std::endl;
+    findMaxSlack();
+
     std::cout << "End initialization!!! \n"
               << std::endl;
 }
@@ -1751,4 +1755,158 @@ vector<pair<double, double>> Solver::Solver::getAdjacentPinPosition(size_t &id) 
         }
     }
     return pinPosition;
+}
+
+void Solver::Solver::findMaxSlack()
+{
+    // calculate the distance of critical path and convert to slack for every FF_D
+    for (size_t i = 0; i < _FF_D_arr.size(); i++)
+    {
+        size_t numOfConnectedFF = _FF_D_arr[i].faninCone.size();
+        double longestPath = 0;
+        for (size_t j = 0; j < numOfConnectedFF; j++)
+        {
+            double distance = 0;
+            if (_FF_D_arr[i].inGate2Fanin[j] != _ID_to_instance.size()) // if the former FF is not directly connect to FF_D
+            {
+                distance += _ptr_STAEngine->getDistance(_FF_D_arr[i].inGate2Fanin[j], _FF_D_arr[i].outGate2Fanin[j]);
+                // calculate the distance between outPin of gate and FF_D
+                pair<double, double> gatePos = findPinPosition(_FF_D_arr[i].outGate2Fanin[j]);
+                pair<double, double> FFPos = _FF_D_arr[i].getPosition();
+                distance += (std::fabs(gatePos.first - FFPos.first) + std::fabs(gatePos.second - FFPos.second));
+                // calculate the distance between inPin of gate and FF_D
+                gatePos = findPinPosition(_FF_D_arr[i].inGate2Fanin[j]);
+                FFPos = findPinPosition(_FF_D_arr[i].faninCone[j]);
+                distance += (std::fabs(gatePos.first - FFPos.first) + std::fabs(gatePos.second - FFPos.second));
+
+                // if the path is longer than the former longest path, record it
+                if (distance > longestPath)
+                {
+                    longestPath = distance;
+                }
+            }
+            else // the former FF is directly connect to FF_D
+            {
+                pair<double, double> FFPos = _FF_D_arr[i].getPosition();
+                pair<double, double> FFBeforePos = findPinPosition(_FF_D_arr[i].faninCone[j]);
+                distance += (std::fabs(FFBeforePos.first - FFPos.first) + std::fabs(FFBeforePos.second - FFPos.second));
+
+                // if the path is longer than the former longest path, record it
+                if (distance > longestPath)
+                {
+                    longestPath = distance;
+                }
+            }
+        }
+
+        // convert the longestPath into slack
+        _FF_D_arr[i].maxSlack = (longestPath / _ptr_Parser->_alpha) + _FF_D_arr[i].getOriSlack();
+    }
+}
+
+vector<double> Solver::Solver::getSlack2ConnectedFF(const size_t &id) // the input should be global ID
+{
+    vector<double> output;
+    output.reserve(128);
+    if (_ID_to_instance[id]->getType() == Inst::INST_FF_D)
+    {
+        size_t numOfConnectedFF = _FF_D_arr[id - _FF_D_OFFSET].faninCone.size();
+        for (size_t i = 0; i < numOfConnectedFF; i++)
+        {
+            double distance = 0;
+            if (_FF_D_arr[id - _FF_D_OFFSET].inGate2Fanin[i] != _ID_to_instance.size()) // if the former FF is not directly connect to FF_D
+            {
+                distance += _ptr_STAEngine->getDistance(_FF_D_arr[id - _FF_D_OFFSET].inGate2Fanin[i], _FF_D_arr[id - _FF_D_OFFSET].outGate2Fanin[i]);
+                // calculate the distance between outPin of gate and FF_D
+                pair<double, double> gatePos = findPinPosition(_FF_D_arr[id - _FF_D_OFFSET].outGate2Fanin[i]);
+                pair<double, double> FFPos = _FF_D_arr[id - _FF_D_OFFSET].getPosition();
+                distance += (std::fabs(gatePos.first - FFPos.first) + std::fabs(gatePos.second - FFPos.second));
+                // calculate the distance between inPin of gate and FF_D
+                gatePos = findPinPosition(_FF_D_arr[id - _FF_D_OFFSET].inGate2Fanin[i]);
+                FFPos = findPinPosition(_FF_D_arr[id - _FF_D_OFFSET].faninCone[i]);
+                distance += (std::fabs(gatePos.first - FFPos.first) + std::fabs(gatePos.second - FFPos.second));
+
+                // check whether the connected FF has been grouped
+                if (_FF_Q_arr[_FF_D_arr[id - _FF_D_OFFSET].faninCone[i] - _FF_Q_OFFSET].grouped)
+                {
+                    // if is grouped give all slack to FF_D
+                    output.push_back(_FF_D_arr[id - _FF_D_OFFSET].maxSlack - (distance / _ptr_Parser->_alpha));
+                }
+                else
+                {
+                    // if is not grouped give half slack to FF_D
+                    output.push_back((_FF_D_arr[id - _FF_D_OFFSET].maxSlack - (distance / _ptr_Parser->_alpha)) / 2);
+                }
+            }
+            else // the former FF is directly connect to FF_D
+            {
+                pair<double, double> FFPos = _FF_D_arr[id - _FF_D_OFFSET].getPosition();
+                pair<double, double> FFBeforePos = findPinPosition(_FF_D_arr[id - _FF_D_OFFSET].faninCone[i]);
+                distance += (std::fabs(FFBeforePos.first - FFPos.first) + std::fabs(FFBeforePos.second - FFPos.second));
+
+                // check whether the connected FF has been grouped
+                if (_FF_Q_arr[_FF_D_arr[id - _FF_D_OFFSET].faninCone[i] - _FF_Q_OFFSET].grouped)
+                {
+                    // if is grouped give all slack to FF_D
+                    output.push_back(_FF_D_arr[id - _FF_D_OFFSET].maxSlack - (distance / _ptr_Parser->_alpha));
+                }
+                else
+                {
+                    // if is not grouped give half slack to FF_D
+                    output.push_back((_FF_D_arr[id - _FF_D_OFFSET].maxSlack - (distance / _ptr_Parser->_alpha)) / 2);
+                }
+            }
+        }
+    }
+    else if (_ID_to_instance[id]->getType() == Inst::INST_FF_Q)
+    {
+        size_t numOfConnectedFF = _FF_Q_arr[id - _FF_Q_OFFSET].fanoutCone.size();
+        for (size_t i = 0; i < numOfConnectedFF; i++)
+        {
+            double distance = 0;
+            if (_FF_Q_arr[id - _FF_Q_OFFSET].inGate2Fanout[i] != _ID_to_instance.size()) // if the former FF is not directly connect to FF_Q
+            {
+                distance += _ptr_STAEngine->getDistance(_FF_Q_arr[id - _FF_Q_OFFSET].inGate2Fanout[i], _FF_Q_arr[id - _FF_Q_OFFSET].outGate2Fanout[i]);
+                // calculate the distance between outPin of gate and FF_D
+                pair<double, double> gatePos = findPinPosition(_FF_Q_arr[id - _FF_Q_OFFSET].outGate2Fanout[i]);
+                pair<double, double> FFPos = findPinPosition(_FF_Q_arr[id - _FF_Q_OFFSET].fanoutCone[i]);
+                distance += (std::fabs(gatePos.first - FFPos.first) + std::fabs(gatePos.second - FFPos.second));
+                // calculate the distance between inPin of gate and FF_Q
+                gatePos = findPinPosition(_FF_Q_arr[id - _FF_Q_OFFSET].inGate2Fanout[i]);
+                FFPos = _FF_Q_arr[id - _FF_Q_OFFSET].getPosition();
+                distance += (std::fabs(gatePos.first - FFPos.first) + std::fabs(gatePos.second - FFPos.second));
+
+                // check whether the connected FF has been grouped
+                if (_FF_D_arr[_FF_Q_arr[id - _FF_Q_OFFSET].fanoutCone[i] - _FF_D_OFFSET].grouped)
+                {
+                    // if is grouped give all slack to FF_D
+                    output.push_back(_FF_D_arr[_FF_Q_arr[id - _FF_Q_OFFSET].fanoutCone[i] - _FF_D_OFFSET].maxSlack - (distance / _ptr_Parser->_alpha));
+                }
+                else
+                {
+                    // if is not grouped give half slack to FF_D
+                    output.push_back((_FF_D_arr[_FF_Q_arr[id - _FF_Q_OFFSET].fanoutCone[i] - _FF_D_OFFSET].maxSlack - (distance / _ptr_Parser->_alpha)) / 2);
+                }
+            }
+            else // the former FF is directly connect to FF_D
+            {
+                pair<double, double> FFPos = _FF_Q_arr[id - _FF_Q_OFFSET].getPosition();
+                pair<double, double> FFBeforePos = findPinPosition(_FF_Q_arr[id - _FF_Q_OFFSET].fanoutCone[i]);
+                distance += (std::fabs(FFBeforePos.first - FFPos.first) + std::fabs(FFBeforePos.second - FFPos.second));
+
+                // check whether the connected FF has been grouped
+                if (_FF_D_arr[_FF_Q_arr[id - _FF_Q_OFFSET].fanoutCone[i] - _FF_D_OFFSET].grouped)
+                {
+                    // if is grouped give all slack to FF_D
+                    output.push_back(_FF_D_arr[_FF_Q_arr[id - _FF_Q_OFFSET].fanoutCone[i] - _FF_D_OFFSET].maxSlack - (distance / _ptr_Parser->_alpha));
+                }
+                else
+                {
+                    // if is not grouped give half slack to FF_D
+                    output.push_back((_FF_D_arr[_FF_Q_arr[id - _FF_Q_OFFSET].fanoutCone[i] - _FF_D_OFFSET].maxSlack - (distance / _ptr_Parser->_alpha)) / 2);
+                }
+            }
+        }
+    }
+    return output;
 }
