@@ -1763,6 +1763,22 @@ void Solver::Solver::findMaxSlack()
     for (size_t i = 0; i < _FF_D_arr.size(); i++)
     {
         size_t numOfConnectedFF = _FF_D_arr[i].faninCone.size();
+        if (numOfConnectedFF == 0) // for the case _FF_D is directly connect to PI
+        {
+            double distance = 0;
+            for (const auto &pinID : _NetList[_FF_D_arr[i].getRelatedNet()[0]])
+            {
+                if (_ID_to_instance[pinID]->getType() == Inst::INST_PIO)
+                {
+                    pair<double, double> PIPos = findPinPosition(pinID);
+                    pair<double, double> FFPos = _FF_D_arr[i].getPosition();
+                    distance += (std::fabs(PIPos.first - FFPos.first) + std::fabs(PIPos.second - FFPos.second));
+                    break;
+                }
+            }
+            _FF_D_arr[i].maxSlack = (distance / _ptr_Parser->_alpha) + _FF_D_arr[i].getOriSlack();
+        }
+
         double longestPath = 0;
         for (size_t j = 0; j < numOfConnectedFF; j++)
         {
@@ -1812,9 +1828,30 @@ vector<double> Solver::Solver::getSlack2ConnectedFF(const size_t &id) // the inp
 {
     vector<double> output;
     output.reserve(128);
+    // If the input is FF_D, we only return one slack, which is the slack of critical path
     if (_ID_to_instance[id]->getType() == Inst::INST_FF_D)
     {
         size_t numOfConnectedFF = _FF_D_arr[id - _FF_D_OFFSET].faninCone.size();
+        // case1: _FF_D is directly connect to PI
+        if (numOfConnectedFF == 0) // for the case _FF_D is directly connect to PI
+        {
+            double distance = 0;
+            for (const auto &pinID : _NetList[_ID_to_instance[id]->getRelatedNet()[0]])
+            {
+                if (_ID_to_instance[pinID]->getType() == Inst::INST_PIO)
+                {
+                    pair<double, double> PIPos = findPinPosition(pinID);
+                    pair<double, double> FFPos = _ID_to_instance[id]->getPosition();
+                    distance += (std::fabs(PIPos.first - FFPos.first) + std::fabs(PIPos.second - FFPos.second));
+                    break;
+                }
+            }
+            output.push_back(_FF_D_arr[id - _FF_D_OFFSET].maxSlack - (distance / _ptr_Parser->_alpha));
+            return output;
+        }
+
+        // case2: _FF_D is not directly connect to PI
+        double slackRemain = _FF_D_arr[id - _FF_D_OFFSET].maxSlack;
         for (size_t i = 0; i < numOfConnectedFF; i++)
         {
             double distance = 0;
@@ -1832,16 +1869,22 @@ vector<double> Solver::Solver::getSlack2ConnectedFF(const size_t &id) // the inp
                 // add the effect of Qpin delay
                 distance += (_ptr_Parser->_flipflopLib[_FF_Q_arr[_FF_D_arr[id - _FF_D_OFFSET].faninCone[i] - _FF_Q_OFFSET].FF_type].PinDelay) * _ptr_Parser->_alpha;
 
+                double s;
                 // check whether the connected FF has been grouped
                 if (_FF_Q_arr[_FF_D_arr[id - _FF_D_OFFSET].faninCone[i] - _FF_Q_OFFSET].grouped)
                 {
                     // if is grouped give all slack to FF_D
-                    output.push_back(_FF_D_arr[id - _FF_D_OFFSET].maxSlack - (distance / _ptr_Parser->_alpha));
+                    s = _FF_D_arr[id - _FF_D_OFFSET].maxSlack - (distance / _ptr_Parser->_alpha);
                 }
                 else
                 {
                     // if is not grouped give half slack to FF_D
-                    output.push_back((_FF_D_arr[id - _FF_D_OFFSET].maxSlack - (distance / _ptr_Parser->_alpha)) / 2);
+                    s = (_FF_D_arr[id - _FF_D_OFFSET].maxSlack - (distance / _ptr_Parser->_alpha)) / 2;
+                }
+
+                if (s < slackRemain)
+                {
+                    slackRemain = s;
                 }
             }
             else // the former FF is directly connect to FF_D
@@ -1852,19 +1895,27 @@ vector<double> Solver::Solver::getSlack2ConnectedFF(const size_t &id) // the inp
                 // add the effect of Qpin delay
                 distance += (_ptr_Parser->_flipflopLib[_FF_Q_arr[_FF_D_arr[id - _FF_D_OFFSET].faninCone[i] - _FF_Q_OFFSET].FF_type].PinDelay) * _ptr_Parser->_alpha;
 
+                double s;
                 // check whether the connected FF has been grouped
                 if (_FF_Q_arr[_FF_D_arr[id - _FF_D_OFFSET].faninCone[i] - _FF_Q_OFFSET].grouped)
                 {
                     // if is grouped give all slack to FF_D
-                    output.push_back(_FF_D_arr[id - _FF_D_OFFSET].maxSlack - (distance / _ptr_Parser->_alpha));
+                    s = _FF_D_arr[id - _FF_D_OFFSET].maxSlack - (distance / _ptr_Parser->_alpha);
                 }
                 else
                 {
                     // if is not grouped give half slack to FF_D
-                    output.push_back((_FF_D_arr[id - _FF_D_OFFSET].maxSlack - (distance / _ptr_Parser->_alpha)) / 2);
+                    s = (_FF_D_arr[id - _FF_D_OFFSET].maxSlack - (distance / _ptr_Parser->_alpha)) / 2;
+                }
+
+                if (s < slackRemain)
+                {
+                    slackRemain = s;
                 }
             }
         }
+        output.push_back(slackRemain);
+        return output;
     }
     else if (_ID_to_instance[id]->getType() == Inst::INST_FF_Q)
     {
