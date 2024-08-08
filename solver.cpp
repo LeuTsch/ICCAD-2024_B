@@ -1302,7 +1302,7 @@ vector<size_t> Solver::Solver::prePlace(const vector<size_t> &ff_group, size_t e
             pair<double, double> GatePinPos = findPinPosition(ptr_FF_D->outGate2Fanin[i]);
             double Oridis = std::fabs(OriPos.first - GatePinPos.first) + std::fabs(OriPos.second - GatePinPos.second);
             double Nowdis = std::fabs(NowPos.first - GatePinPos.first) + std::fabs(NowPos.second - GatePinPos.second);
-            double deltaSlack = (Nowdis - Oridis) / _ptr_Parser->_alpha;
+            double deltaSlack = (Nowdis - Oridis) / _ptr_Parser->_displaceDelay;
             if (_FF_Q_arr[ptr_FF_D->faninCone[i] - _FF_Q_OFFSET].slack > ptr_FF_D->slack - deltaSlack)
             {
                 _FF_Q_arr[ptr_FF_D->faninCone[i] - _FF_Q_OFFSET].slack = ptr_FF_D->slack - deltaSlack;
@@ -1317,7 +1317,7 @@ vector<size_t> Solver::Solver::prePlace(const vector<size_t> &ff_group, size_t e
             pair<double, double> GatePinPos = findPinPosition(ptr_FF_Q->inGate2Fanout[i]);
             double Oridis = std::fabs(OriPos.first - GatePinPos.first) + std::fabs(OriPos.second - GatePinPos.second);
             double Nowdis = std::fabs(NowPos.first - GatePinPos.first) + std::fabs(NowPos.second - GatePinPos.second);
-            double deltaSlack = (Nowdis - Oridis) / _ptr_Parser->_alpha;
+            double deltaSlack = (Nowdis - Oridis) / _ptr_Parser->_displaceDelay;
             if (_FF_D_arr[ptr_FF_Q->fanoutCone[i] - _FF_D_OFFSET].slack > _FF_D_arr[ptr_FF_Q->fanoutCone[i] - _FF_D_OFFSET].getOriSlack() - deltaSlack)
             {
                 _FF_D_arr[ptr_FF_Q->fanoutCone[i] - _FF_D_OFFSET].slack = _FF_D_arr[ptr_FF_Q->fanoutCone[i] - _FF_D_OFFSET].getOriSlack() - deltaSlack;
@@ -1776,7 +1776,7 @@ void Solver::Solver::findMaxSlack()
                     break;
                 }
             }
-            _FF_D_arr[i].maxSlack = (distance / _ptr_Parser->_alpha) + _FF_D_arr[i].getOriSlack();
+            _FF_D_arr[i].maxSlack = (distance / _ptr_Parser->_displaceDelay) + _FF_D_arr[i].getOriSlack();
         }
 
         double longestPath = 0;
@@ -1795,7 +1795,7 @@ void Solver::Solver::findMaxSlack()
                 FFPos = findPinPosition(_FF_D_arr[i].faninCone[j]);
                 distance += (std::fabs(gatePos.first - FFPos.first) + std::fabs(gatePos.second - FFPos.second));
                 // add the effect of Qpin delay
-                distance += (_ptr_Parser->_flipflopLib[_FF_Q_arr[_FF_D_arr[i].faninCone[j] - _FF_Q_OFFSET].FF_type].PinDelay) * _ptr_Parser->_alpha;
+                distance += (_ptr_Parser->_flipflopLib[_FF_Q_arr[_FF_D_arr[i].faninCone[j] - _FF_Q_OFFSET].FF_type].PinDelay) * _ptr_Parser->_displaceDelay;
 
                 // if the path is longer than the former longest path, record it
                 if (distance > longestPath)
@@ -1809,7 +1809,7 @@ void Solver::Solver::findMaxSlack()
                 pair<double, double> FFBeforePos = findPinPosition(_FF_D_arr[i].faninCone[j]);
                 distance += (std::fabs(FFBeforePos.first - FFPos.first) + std::fabs(FFBeforePos.second - FFPos.second));
                 // add the effect of Qpin delay
-                distance += (_ptr_Parser->_flipflopLib[_FF_Q_arr[_FF_D_arr[i].faninCone[j] - _FF_Q_OFFSET].FF_type].PinDelay) * _ptr_Parser->_alpha;
+                distance += (_ptr_Parser->_flipflopLib[_FF_Q_arr[_FF_D_arr[i].faninCone[j] - _FF_Q_OFFSET].FF_type].PinDelay) * _ptr_Parser->_displaceDelay;
 
                 // if the path is longer than the former longest path, record it
                 if (distance > longestPath)
@@ -1820,7 +1820,7 @@ void Solver::Solver::findMaxSlack()
         }
 
         // convert the longestPath into slack
-        _FF_D_arr[i].maxSlack = (longestPath / _ptr_Parser->_alpha) + _FF_D_arr[i].getOriSlack();
+        _FF_D_arr[i].maxSlack = (longestPath / _ptr_Parser->_displaceDelay) + _FF_D_arr[i].getOriSlack();
     }
 }
 
@@ -1846,7 +1846,7 @@ vector<double> Solver::Solver::getSlack2ConnectedFF(const size_t &id) // the inp
                     break;
                 }
             }
-            output.push_back(_FF_D_arr[id - _FF_D_OFFSET].maxSlack - (distance / _ptr_Parser->_alpha));
+            output.push_back(_FF_D_arr[id - _FF_D_OFFSET].maxSlack - (distance / _ptr_Parser->_displaceDelay));
             return output;
         }
 
@@ -1867,19 +1867,19 @@ vector<double> Solver::Solver::getSlack2ConnectedFF(const size_t &id) // the inp
                 FFPos = findPinPosition(_FF_D_arr[id - _FF_D_OFFSET].faninCone[i]);
                 distance += (std::fabs(gatePos.first - FFPos.first) + std::fabs(gatePos.second - FFPos.second));
                 // add the effect of Qpin delay
-                distance += (_ptr_Parser->_flipflopLib[_FF_Q_arr[_FF_D_arr[id - _FF_D_OFFSET].faninCone[i] - _FF_Q_OFFSET].FF_type].PinDelay) * _ptr_Parser->_alpha;
+                distance += (_ptr_Parser->_flipflopLib[_FF_Q_arr[_FF_D_arr[id - _FF_D_OFFSET].faninCone[i] - _FF_Q_OFFSET].FF_type].PinDelay) * _ptr_Parser->_displaceDelay;
 
                 double s;
                 // check whether the connected FF has been grouped
                 if (_FF_Q_arr[_FF_D_arr[id - _FF_D_OFFSET].faninCone[i] - _FF_Q_OFFSET].grouped)
                 {
                     // if is grouped give all slack to FF_D
-                    s = _FF_D_arr[id - _FF_D_OFFSET].maxSlack - (distance / _ptr_Parser->_alpha);
+                    s = _FF_D_arr[id - _FF_D_OFFSET].maxSlack - (distance / _ptr_Parser->_displaceDelay);
                 }
                 else
                 {
                     // if is not grouped give half slack to FF_D
-                    s = (_FF_D_arr[id - _FF_D_OFFSET].maxSlack - (distance / _ptr_Parser->_alpha)) / 2;
+                    s = (_FF_D_arr[id - _FF_D_OFFSET].maxSlack - (distance / _ptr_Parser->_displaceDelay)) / 2;
                 }
 
                 if (s < slackRemain)
@@ -1893,19 +1893,19 @@ vector<double> Solver::Solver::getSlack2ConnectedFF(const size_t &id) // the inp
                 pair<double, double> FFBeforePos = findPinPosition(_FF_D_arr[id - _FF_D_OFFSET].faninCone[i]);
                 distance += (std::fabs(FFBeforePos.first - FFPos.first) + std::fabs(FFBeforePos.second - FFPos.second));
                 // add the effect of Qpin delay
-                distance += (_ptr_Parser->_flipflopLib[_FF_Q_arr[_FF_D_arr[id - _FF_D_OFFSET].faninCone[i] - _FF_Q_OFFSET].FF_type].PinDelay) * _ptr_Parser->_alpha;
+                distance += (_ptr_Parser->_flipflopLib[_FF_Q_arr[_FF_D_arr[id - _FF_D_OFFSET].faninCone[i] - _FF_Q_OFFSET].FF_type].PinDelay) * _ptr_Parser->_displaceDelay;
 
                 double s;
                 // check whether the connected FF has been grouped
                 if (_FF_Q_arr[_FF_D_arr[id - _FF_D_OFFSET].faninCone[i] - _FF_Q_OFFSET].grouped)
                 {
                     // if is grouped give all slack to FF_D
-                    s = _FF_D_arr[id - _FF_D_OFFSET].maxSlack - (distance / _ptr_Parser->_alpha);
+                    s = _FF_D_arr[id - _FF_D_OFFSET].maxSlack - (distance / _ptr_Parser->_displaceDelay);
                 }
                 else
                 {
                     // if is not grouped give half slack to FF_D
-                    s = (_FF_D_arr[id - _FF_D_OFFSET].maxSlack - (distance / _ptr_Parser->_alpha)) / 2;
+                    s = (_FF_D_arr[id - _FF_D_OFFSET].maxSlack - (distance / _ptr_Parser->_displaceDelay)) / 2;
                 }
 
                 if (s < slackRemain)
@@ -1935,18 +1935,18 @@ vector<double> Solver::Solver::getSlack2ConnectedFF(const size_t &id) // the inp
                 FFPos = _FF_Q_arr[id - _FF_Q_OFFSET].getPosition();
                 distance += (std::fabs(gatePos.first - FFPos.first) + std::fabs(gatePos.second - FFPos.second));
                 // add the effect of Qpin delay
-                distance += (_ptr_Parser->_flipflopLib[_FF_Q_arr[id - _FF_Q_OFFSET].FF_type].PinDelay) * _ptr_Parser->_alpha;
+                distance += (_ptr_Parser->_flipflopLib[_FF_Q_arr[id - _FF_Q_OFFSET].FF_type].PinDelay) * _ptr_Parser->_displaceDelay;
 
                 // check whether the connected FF has been grouped
                 if (_FF_D_arr[_FF_Q_arr[id - _FF_Q_OFFSET].fanoutCone[i] - _FF_D_OFFSET].grouped)
                 {
                     // if is grouped give all slack to FF_D
-                    output.push_back(_FF_D_arr[_FF_Q_arr[id - _FF_Q_OFFSET].fanoutCone[i] - _FF_D_OFFSET].maxSlack - (distance / _ptr_Parser->_alpha));
+                    output.push_back(_FF_D_arr[_FF_Q_arr[id - _FF_Q_OFFSET].fanoutCone[i] - _FF_D_OFFSET].maxSlack - (distance / _ptr_Parser->_displaceDelay));
                 }
                 else
                 {
                     // if is not grouped give half slack to FF_D
-                    output.push_back((_FF_D_arr[_FF_Q_arr[id - _FF_Q_OFFSET].fanoutCone[i] - _FF_D_OFFSET].maxSlack - (distance / _ptr_Parser->_alpha)) / 2);
+                    output.push_back((_FF_D_arr[_FF_Q_arr[id - _FF_Q_OFFSET].fanoutCone[i] - _FF_D_OFFSET].maxSlack - (distance / _ptr_Parser->_displaceDelay)) / 2);
                 }
             }
             else // the later FF is directly connect to FF_D
@@ -1955,18 +1955,18 @@ vector<double> Solver::Solver::getSlack2ConnectedFF(const size_t &id) // the inp
                 pair<double, double> FFBeforePos = findPinPosition(_FF_Q_arr[id - _FF_Q_OFFSET].fanoutCone[i]);
                 distance += (std::fabs(FFBeforePos.first - FFPos.first) + std::fabs(FFBeforePos.second - FFPos.second));
                 // add the effect of Qpin delay
-                distance += (_ptr_Parser->_flipflopLib[_FF_Q_arr[id - _FF_Q_OFFSET].FF_type].PinDelay) * _ptr_Parser->_alpha;
+                distance += (_ptr_Parser->_flipflopLib[_FF_Q_arr[id - _FF_Q_OFFSET].FF_type].PinDelay) * _ptr_Parser->_displaceDelay;
 
                 // check whether the connected FF has been grouped
                 if (_FF_D_arr[_FF_Q_arr[id - _FF_Q_OFFSET].fanoutCone[i] - _FF_D_OFFSET].grouped)
                 {
                     // if is grouped give all slack to FF_D
-                    output.push_back(_FF_D_arr[_FF_Q_arr[id - _FF_Q_OFFSET].fanoutCone[i] - _FF_D_OFFSET].maxSlack - (distance / _ptr_Parser->_alpha));
+                    output.push_back(_FF_D_arr[_FF_Q_arr[id - _FF_Q_OFFSET].fanoutCone[i] - _FF_D_OFFSET].maxSlack - (distance / _ptr_Parser->_displaceDelay));
                 }
                 else
                 {
                     // if is not grouped give half slack to FF_D
-                    output.push_back((_FF_D_arr[_FF_Q_arr[id - _FF_Q_OFFSET].fanoutCone[i] - _FF_D_OFFSET].maxSlack - (distance / _ptr_Parser->_alpha)) / 2);
+                    output.push_back((_FF_D_arr[_FF_Q_arr[id - _FF_Q_OFFSET].fanoutCone[i] - _FF_D_OFFSET].maxSlack - (distance / _ptr_Parser->_displaceDelay)) / 2);
                 }
             }
         }
