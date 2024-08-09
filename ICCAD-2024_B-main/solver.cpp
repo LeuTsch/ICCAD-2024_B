@@ -7,11 +7,13 @@
 #include <algorithm>
 #include <map>
 #include <list>
-#include <unordered_map>
+#include <fstream>
+#include <iomanip>
 
 #include "inst.h"
 #include "solver.h"
 #include "STAEngine.h"
+#include "legalizer.h"
 
 using std::list;
 using std::pair;
@@ -71,6 +73,7 @@ void Solver::Solver::initSolver()
                         position.second = instance.y + _ptr_Parser->_flipflopLib[i].PinCrdnate[k].second;
                         Inst::FF_D FF_D(nameFFbit + _ptr_Parser->_flipflopLib[i].PinName[k], position);
                         FF_D.FF_type = i;
+                        FF_D.OriFF_type = i;
                         _FF_D_arr.push_back(FF_D);
                         // search for correspomding Q
                         for (size_t j = 0; j < _ptr_Parser->_flipflopLib[i].PinName.size(); j++)
@@ -325,6 +328,15 @@ void Solver::Solver::initSolver()
     _ptr_STAEngine->setSolverPtr(this);
     _ptr_STAEngine->initEngine(_NetList, _ID_to_instance);
 
+    // step8: initialize the legalizer
+    std::cout << "step8: initialize the legalizer" << std::endl;
+    assert(_ptr_legalizer != nullptr);
+    _ptr_legalizer->setSolverPtr(this);
+
+    // step9: calculate the Max slack for every FF
+    std::cout << "step9: calculate the Max slack for every FF" << std::endl;
+    findMaxSlack();
+
     std::cout << "End initialization!!! \n"
               << std::endl;
 }
@@ -337,38 +349,84 @@ void Solver::Solver::initSolver()
 void Solver::Solver::solve_initbuild()
 {
     slackDistribute(0.6);
+    std::cout << "slackdistribute is completed" << std::endl;
 
     // build the coordinate vector
-    for (int i = 0; i < _FF_D_arr.size(); i++)
+    for (size_t i = 0; i < _FF_D_arr.size(); i++)
     {
 
         double Dx = findPinPosition(i + _FF_D_OFFSET).first;
-        _FF_D_arr[i].Dx_pos = Dx;
+        _FF_D_arr.at(i).Dx_pos = Dx;
 
         double Dy = findPinPosition(i + _FF_D_OFFSET).second;
-        _FF_D_arr[i].Dy_pos = Dy;
+        _FF_D_arr.at(i).Dy_pos = Dy;
 
         double Qx = findPinPosition(i + _FF_Q_OFFSET).first;
-        _FF_Q_arr[i].Qx_pos = Qx;
+        _FF_Q_arr.at(i).Qx_pos = Qx;
 
         double Qy = findPinPosition(i + _FF_Q_OFFSET).second;
-        _FF_Q_arr[i].Qy_pos = Qy;
+        _FF_Q_arr.at(i).Qy_pos = Qy;
     }
-
-    // build fanin fanout position
-    for (int i = 0; i < _FF_D_arr.size(); i++)
+    // std::cout << "check1" << std::endl;
+    // std::cout << "FFDsize: " << _FF_D_arr.size() << std::endl;
+    //  build fanin fanout position
+    for (size_t i = 0; i < _FF_D_arr.size(); i++)
     {
         size_t D_id = i + _FF_D_OFFSET;
-        vector<pair<double, double>> pos = getAdjacentPinPosition(D_id);
-        // check the size of pos is 1.
-        _FF_D_arr[i].D_fanin_pos = pos[0];
+
+        // std::cout << "size :" << _FF_D_arr.at(i).faninCone.size() << std::endl;
+        if (_FF_D_arr.at(i).faninCone.size() == 0)
+        {
+            pair<double, double> PIpos = {-1, -1}; // to check the PIO
+            _FF_D_arr.at(i).D_fanin_pos = PIpos;
+        }
+        else
+        {
+            size_t prev_id = _FF_D_arr.at(i).faninCone.at(0);
+            size_t gatepinid = _FF_D_arr.at(i).outGate2Fanin.at(0); // all index should get the same id
+
+            if (gatepinid == _ID_to_instance.size())
+            {
+                pair<double, double> ffQPinPos = findPinPosition(prev_id);
+                _FF_D_arr.at(i).D_fanin_pos = ffQPinPos;
+            }
+            else
+            {
+                pair<double, double> GatePinPos = findPinPosition(gatepinid);
+                _FF_D_arr.at(i).D_fanin_pos = GatePinPos;
+            }
+        }
     }
 
-    for (int i = 0; i < _FF_Q_arr.size(); i++)
+    for (size_t i = 0; i < _FF_Q_arr.size(); i++)
     {
         size_t Q_id = i + _FF_Q_OFFSET;
-        _FF_Q_arr[i].Q_fanout_pos.reserve(_FF_Q_arr.size());
-        _FF_Q_arr[i].Q_fanout_pos = getAdjacentPinPosition(Q_id);
+        _FF_Q_arr.at(i).Q_fanout_pos.reserve(128);
+
+        if (_FF_Q_arr.at(i).fanoutCone.size() == 0)
+        {
+            _FF_Q_arr.at(i).Q_fanout_pos = {{-1, -1}}; //check PIO
+        }
+        else
+        {
+            for (size_t j = 0; j < _FF_Q_arr.at(i).fanoutCone.size(); j++)
+            {
+
+                size_t next_id = _FF_Q_arr.at(i).fanoutCone.at(j);      // id of next ff
+                size_t gatepinid = _FF_Q_arr.at(i).inGate2Fanout.at(j); // pinID of fanout
+
+                if (gatepinid == _ID_to_instance.size())
+                {
+                    pair<double, double> ffDPinPos = findPinPosition(next_id); // directly connected, need to check later
+                    _FF_Q_arr.at(i).Q_fanout_pos.push_back(ffDPinPos);
+                }
+                else
+                {
+                    pair<double, double> GatePinPos = findPinPosition(gatepinid);
+                    _FF_Q_arr.at(i).Q_fanout_pos.push_back(GatePinPos);
+                }
+            }
+        }
     }
 
     std::cout << "initbuild is completed" << std::endl;
@@ -402,66 +460,74 @@ void Solver::Solver::solve_findfeasible()
 
     // rotate the coordinate and find the feasible
 
-    for (int i = 0; i < _FF_D_arr.size(); i++)
+    for (size_t i = 0; i < _FF_D_arr.size(); i++)
     {
-        double dist = (_FF_Q_arr[i].Qx_pos - _FF_D_arr[i].Dx_pos) * 0.5;
-        double D_dia_len = fabs(_FF_D_arr[i].Dx_pos - _FF_D_arr[i].D_fanin_pos.first) + fabs(_FF_D_arr[i].Dy_pos - _FF_D_arr[i].D_fanin_pos.second) + _FF_D_arr[i].slack;
-        double Dx_pos_r = _FF_D_arr[i].Dy_pos + _FF_D_arr[i].Dx_pos + dist; // x'=y+x //D shift right
-        double Dy_pos_r = _FF_D_arr[i].Dy_pos - _FF_D_arr[i].Dx_pos - dist; // y'=y-x
-        coor_w_se Dx_s, Dx_e;
+        double dist = (_FF_Q_arr.at(i).Qx_pos - _FF_D_arr.at(i).Dx_pos) * 0.5;
         vector<coor_w_se> dia_x_arr;
-        dia_x_arr.reserve(256);
-        Dx_s.pos_val = Dx_pos_r - (2 * D_dia_len);
-        Dx_s.type = 0;
-        Dx_s.or_ind = 0;
-        Dx_e.pos_val = Dx_pos_r + (2 * D_dia_len);
-        Dx_e.type = 1;
-        Dx_e.or_ind = 0;
-
-        dia_x_arr.push_back(Dx_s);
-        dia_x_arr.push_back(Dx_e);
-
-        coor_w_se Dy_s, Dy_e;
         vector<coor_w_se> dia_y_arr;
-        dia_y_arr.reserve(256);
-        Dy_s.pos_val = Dy_pos_r - (2 * D_dia_len);
-        Dy_s.type = 0;
-        Dy_s.or_ind = 0;
-        Dy_e.pos_val = Dy_pos_r + (2 * D_dia_len);
-        Dy_e.type = 1;
-        Dy_e.or_ind = 0;
 
-        dia_y_arr.push_back(Dy_s);
-        dia_y_arr.push_back(Dy_e);
+        if (_FF_D_arr.at(i).D_fanin_pos.first != -1 || _FF_D_arr.at(i).D_fanin_pos.second != -1) // avoid PI
+        {
+            double D_dia_len = fabs(_FF_D_arr.at(i).Dx_pos - _FF_D_arr.at(i).D_fanin_pos.first) + fabs(_FF_D_arr.at(i).Dy_pos - _FF_D_arr.at(i).D_fanin_pos.second) + getSlack2ConnectedFF(i + _FF_D_OFFSET).at(0) / (_ptr_Parser->_displaceDelay);
+            double Dx_pos_r = _FF_D_arr.at(i).Dy_pos + _FF_D_arr.at(i).Dx_pos + 2 * dist; // x'=y+x //D shift right
+            double Dy_pos_r = _FF_D_arr.at(i).Dy_pos - _FF_D_arr.at(i).Dx_pos - 2 * dist; // y'=y-x
+
+            coor_w_se Dx_s, Dx_e;
+            dia_x_arr.reserve(256);
+            Dx_s.pos_val = Dx_pos_r - (2 * D_dia_len);
+            Dx_s.type = 0;
+            Dx_s.or_ind = 0;
+            Dx_e.pos_val = Dx_pos_r + (2 * D_dia_len);
+            Dx_e.type = 1;
+            Dx_e.or_ind = 0;
+
+            dia_x_arr.push_back(Dx_s);
+            dia_x_arr.push_back(Dx_e);
+
+            coor_w_se Dy_s, Dy_e;
+            dia_y_arr.reserve(256);
+            Dy_s.pos_val = Dy_pos_r - (2 * D_dia_len);
+            Dy_s.type = 0;
+            Dy_s.or_ind = 0;
+            Dy_e.pos_val = Dy_pos_r + (2 * D_dia_len);
+            Dy_e.type = 1;
+            Dy_e.or_ind = 0;
+
+            dia_y_arr.push_back(Dy_s);
+            dia_y_arr.push_back(Dy_e);
+        }
 
         // Q part, run through all fanout.
 
-        double Qx_pos_r = _FF_Q_arr[i].Qy_pos + _FF_Q_arr[i].Qx_pos - dist; // Q shift left
-        double Qy_pos_r = _FF_Q_arr[i].Qy_pos - _FF_Q_arr[i].Qx_pos + dist;
-        for (int j = 0; j < _FF_Q_arr[i].Q_fanout_pos.size(); j++)
+        if (_FF_Q_arr.at(i).Q_fanout_pos.at(0).first != -1 || _FF_Q_arr.at(i).Q_fanout_pos.at(0).second != -1)
         {
-            double Q_dia_len = fabs(_FF_Q_arr[i].Qx_pos - _FF_Q_arr[i].Q_fanout_pos[j].first) + fabs(_FF_Q_arr[i].Qy_pos - _FF_Q_arr[i].Q_fanout_pos[j].second) + _FF_Q_arr[i].slack;
-            coor_w_se Qx_s, Qx_e;
-            Qx_s.pos_val = Qx_pos_r - (2 * Q_dia_len);
-            Qx_s.type = 0;
-            Qx_s.or_ind = j + 1;
-            Qx_e.pos_val = Qx_pos_r + (2 * Q_dia_len);
-            Qx_e.type = 1;
-            Qx_e.or_ind = j + 1;
+            double Qx_pos_r = _FF_Q_arr.at(i).Qy_pos + _FF_Q_arr.at(i).Qx_pos - 2 * dist; // Q shift left
+            double Qy_pos_r = _FF_Q_arr.at(i).Qy_pos - _FF_Q_arr.at(i).Qx_pos + 2 * dist;
+            for (size_t j = 0; j < _FF_Q_arr.at(i).Q_fanout_pos.size(); j++)
+            {
+                double Q_dia_len = fabs(_FF_Q_arr.at(i).Qx_pos - _FF_Q_arr.at(i).Q_fanout_pos.at(j).first) + fabs(_FF_Q_arr.at(i).Qy_pos - _FF_Q_arr.at(i).Q_fanout_pos.at(j).second) + getSlack2ConnectedFF(i + _FF_Q_OFFSET).at(j) / (_ptr_Parser->_displaceDelay);
+                coor_w_se Qx_s, Qx_e;
+                Qx_s.pos_val = Qx_pos_r - (2 * Q_dia_len);
+                Qx_s.type = 0;
+                Qx_s.or_ind = j + 1;
+                Qx_e.pos_val = Qx_pos_r + (2 * Q_dia_len);
+                Qx_e.type = 1;
+                Qx_e.or_ind = j + 1;
 
-            dia_x_arr.push_back(Qx_s);
-            dia_x_arr.push_back(Qx_e);
+                dia_x_arr.push_back(Qx_s);
+                dia_x_arr.push_back(Qx_e);
 
-            coor_w_se Qy_s, Qy_e;
-            Qy_s.pos_val = Qy_pos_r - (2 * Q_dia_len);
-            Qy_s.type = 0;
-            Qy_s.or_ind = j + 1;
-            Qy_e.pos_val = Qy_pos_r + (2 * Q_dia_len);
-            Qy_e.type = 1;
-            Qy_e.or_ind = j + 1;
+                coor_w_se Qy_s, Qy_e;
+                Qy_s.pos_val = Qy_pos_r - (2 * Q_dia_len);
+                Qy_s.type = 0;
+                Qy_s.or_ind = j + 1;
+                Qy_e.pos_val = Qy_pos_r + (2 * Q_dia_len);
+                Qy_e.type = 1;
+                Qy_e.or_ind = j + 1;
 
-            dia_y_arr.push_back(Qy_s);
-            dia_y_arr.push_back(Qy_e);
+                dia_y_arr.push_back(Qy_s);
+                dia_y_arr.push_back(Qy_e);
+            }
         }
 
         // draw feasible by using dia_x_arr, dia_y_arr
@@ -473,9 +539,9 @@ void Solver::Solver::solve_findfeasible()
 
         int target_x;
         int bound_ctr_x = 0;
-        for (int k = 1; k < dia_x_arr.size(); k++)
+        for (size_t k = 1; k < dia_x_arr.size(); k++)
         {
-            if ((dia_x_arr[k].type == 1) && (dia_x_arr[k - 1].type == 0))
+            if ((dia_x_arr.at(k).type == 1) && (dia_x_arr.at(k - 1).type == 0))
             {
                 target_x = k;
                 bound_ctr_x++;
@@ -484,9 +550,9 @@ void Solver::Solver::solve_findfeasible()
 
         int target_y;
         int bound_ctr_y = 0;
-        for (int k = 1; k < dia_y_arr.size(); k++)
+        for (size_t k = 1; k < dia_y_arr.size(); k++)
         {
-            if ((dia_y_arr[k].type == 1) && (dia_y_arr[k - 1].type == 0))
+            if ((dia_y_arr.at(k).type == 1) && (dia_y_arr.at(k - 1).type == 0))
             {
                 target_y = k;
                 bound_ctr_y++;
@@ -496,30 +562,38 @@ void Solver::Solver::solve_findfeasible()
         if ((bound_ctr_x != 1) || (bound_ctr_y != 1))
         {
             // no feasible
-            _FF_D_arr[i].grouped = 1;
+            _FF_D_arr.at(i).grouped = 0;
+            _FF_D_arr.at(i).hasfeasible = 0;
         }
         else
         {
             // feasible
-            _FF_D_arr[i].fea_x_s.type = 0;
-            _FF_D_arr[i].fea_x_s.pos_val = dia_x_arr[target_x - 1].pos_val;
-            _FF_D_arr[i].fea_x_s.FF_id = i;
+            _FF_D_arr.at(i).grouped = 0;
+            _FF_D_arr.at(i).hasfeasible = 1;
 
-            _FF_D_arr[i].fea_x_e.type = 1;
-            _FF_D_arr[i].fea_x_e.pos_val = dia_x_arr[target_x].pos_val;
-            _FF_D_arr[i].fea_x_e.FF_id = i;
+            _FF_D_arr.at(i).fea_x_s.type = 0;
+            _FF_D_arr.at(i).fea_x_s.pos_val = dia_x_arr.at(target_x - 1).pos_val;
+            _FF_D_arr.at(i).fea_x_s.FF_id = i;
 
-            _FF_D_arr[i].fea_y_s.type = 0;
-            _FF_D_arr[i].fea_y_s.pos_val = dia_y_arr[target_y - 1].pos_val;
-            _FF_D_arr[i].fea_y_s.FF_id = i;
+            _FF_D_arr.at(i).fea_x_e.type = 1;
+            _FF_D_arr.at(i).fea_x_e.pos_val = dia_x_arr.at(target_x).pos_val;
+            _FF_D_arr.at(i).fea_x_e.FF_id = i;
 
-            _FF_D_arr[i].fea_y_e.type = 1;
-            _FF_D_arr[i].fea_y_e.pos_val = dia_y_arr[target_y].pos_val;
-            _FF_D_arr[i].fea_y_e.FF_id = i;
+            _FF_D_arr.at(i).fea_y_s.type = 0;
+            _FF_D_arr.at(i).fea_y_s.pos_val = dia_y_arr.at(target_y - 1).pos_val;
+            _FF_D_arr.at(i).fea_y_s.FF_id = i;
+
+            _FF_D_arr.at(i).fea_y_e.type = 1;
+            _FF_D_arr.at(i).fea_y_e.pos_val = dia_y_arr.at(target_y).pos_val;
+            _FF_D_arr.at(i).fea_y_e.FF_id = i;
+        }
+        if (_FF_D_arr.at(i).hasfeasible == 1)
+        {
+            std::cout << _FF_D_arr.at(i).fea_x_s.pos_val << " " << _FF_D_arr.at(i).fea_x_e.pos_val << std::endl;
         }
     }
 
-    // std::cout << "findfeasible is completed" << std::endl;
+    std::cout << "findfeasible is completed" << std::endl;
 }
 
 void Solver::Solver::solve()
@@ -531,26 +605,26 @@ void Solver::Solver::solve()
     // clock一樣才能綁，外面掛一層迴圈跑過所有clock
     // FFD.getclock 吐 id, id == 0 ... for(int i = 0; i < _ClkList.size(); i++)
 
-    for (int k = 0; k < _ClkList.size(); k++)
+    for (size_t k = 0; k < _ClkList.size(); k++)
     { /*run through clk*/
 
         vector<Inst::feasible_coor> feas_x_clk;
-        feas_x_clk.reserve(_FF_D_arr.size());
+        feas_x_clk.reserve(_FF_D_arr.size() * 2);
         vector<Inst::feasible_coor> feas_y_clk;
-        feas_y_clk.reserve(_FF_D_arr.size());
+        feas_y_clk.reserve(_FF_D_arr.size() * 2);
 
         for (int i = 0; i < _FF_D_arr.size(); i++)
         {
 
-            if (_FF_D_arr[i].getClk() == k)
+            if ((_FF_D_arr[i].getClk() == k) && (_FF_D_arr[i].hasfeasible == 1))
             {
                 // collect
                 // may collect the empty value of no-feasible FF
-                feas_x_clk.push_back(_FF_D_arr[i].fea_x_s);
-                feas_x_clk.push_back(_FF_D_arr[i].fea_x_e);
+                feas_x_clk.push_back(_FF_D_arr.at(i).fea_x_s);
+                feas_x_clk.push_back(_FF_D_arr.at(i).fea_x_e);
 
-                feas_y_clk.push_back(_FF_D_arr[i].fea_y_s);
-                feas_y_clk.push_back(_FF_D_arr[i].fea_y_e);
+                feas_y_clk.push_back(_FF_D_arr.at(i).fea_y_s);
+                feas_y_clk.push_back(_FF_D_arr.at(i).fea_y_e);
             }
         }
 
@@ -568,13 +642,13 @@ void Solver::Solver::solve()
             for (int i = 1; i < feas_x_clk.size(); i++)
             {
 
-                ff_group.push_back(feas_x_clk[i - 1].FF_id + _FF_D_OFFSET);
-                if ((feas_x_clk[i - 1].type) == 0 && (feas_x_clk[i].type == 1))
+                ff_group.push_back(feas_x_clk.at(i - 1).FF_id + _FF_D_OFFSET);
+                if ((feas_x_clk.at(i - 1).type) == 0 && (feas_x_clk.at(i).type == 1))
                 {
                     // ff_group 沒有 essential, result_group有
                     // record the essential is i
 
-                    esssential_ff = feas_x_clk[i].FF_id + _FF_D_OFFSET;
+                    esssential_ff = feas_x_clk.at(i).FF_id + _FF_D_OFFSET;
 
                     // consider the y part
                     pair<double, double> x_pos_r, y_pos_r; // final region
@@ -584,33 +658,43 @@ void Solver::Solver::solve()
 
                     result_group = solve_findmaximal(ff_group, esssential_ff, x_pos_r, y_pos_r);
 
+                    // std::cout << x_pos_r.first << " ," << x_pos_r.second << std::endl;
+
                     result_group.push_back(esssential_ff);
 
                     // preplace and slack release
                     pair<double, double> pos;
                     pos.first = (x_pos_r.first + x_pos_r.second) * 0.5;
                     pos.second = (y_pos_r.first + y_pos_r.second) * 0.5;
-                    pos.first = (pos.first - pos.second) * 0.5; // change to original coordinate
-                    pos.second = (pos.first + pos.second) * 0.5;
-                    // std::cout << "preplace begin" << std::endl;
+                    double x_ori = pos.first;
+                    double y_ori = pos.second;
+                    pos.first = (x_ori - y_ori) * 0.5; // change to original coordinate
+                    // std::cout << "X: " << pos.first <<std::endl;
+                    pos.second = (x_ori + y_ori) * 0.5;
+                    // std::cout << "Y: " << pos.second <<std::endl;
+                    //  std::cout << pos.first << " ," << pos.second << std::endl;
+                    //   std::cout << "preplace begin" << std::endl;
                     final_group = prePlace(result_group, esssential_ff, pos);
+                    // std::cout << "finalgroup size: " << final_group.size() <<std::endl;
 
                     // final_group有essential
 
                     // std::cout << "preplace is completed" << std::endl;
                     //  calculate the feasible
-
-                    solve_findfeasible();
+                    feasible_cal(final_group);
+                    // solve_findfeasible();
                     break;
                 }
             }
 
             // delete the grouped member in feas_x_clk
-            for (int i = 0; i < feas_x_clk.size(); i++)
+            for (size_t i = 0; i < feas_x_clk.size(); i++)
             {
-                if (_FF_D_arr[feas_x_clk[i].FF_id].grouped == 1)
+                // std::cout << "FF" << feas_x_clk.at(i).FF_id << " group or not: " << _FF_D_arr[feas_x_clk.at(i).FF_id].grouped << std::endl;
+                if (_FF_D_arr[feas_x_clk.at(i).FF_id].grouped == 1)
                 {
                     feas_x_clk.erase(feas_x_clk.begin() + i);
+                    i = i - 1;
                 }
             }
             // std::cout << "Clear is completed" << std::endl;
@@ -629,34 +713,299 @@ void Solver::Solver::solve()
     // 決定後來的DQ 的 pos, 記得Q的正方形要往左移（或D往右, Q往左）
     // preplace完 slack release, 更新DQ正方形，重新畫table
 
+    legalize();
     std::cout << "Solver is completed !" << std::endl;
 }
 
 void Solver::Solver::feasible_cal(const vector<size_t> &final_group)
 {
-    std::cout << "Hello" << std::endl;
+    // std::cout << "Hello" << std::endl;
 
-    for (int i = 0; i < final_group.size(); i++)
+    for (size_t i = 0; i < final_group.size(); i++)
     {
-        size_t id = final_group[i] - _FF_D_OFFSET;
+        size_t id = final_group.at(i) - _FF_D_OFFSET;
+        Inst::FF_D *ptr_FF_D = &_FF_D_arr[id];
+
+        for (size_t kk = 0; kk < ptr_FF_D->faninCone.size(); kk++)
+        {
+            size_t FFid = ptr_FF_D->faninCone[kk] - _FF_Q_OFFSET;
+
+            if (_FF_D_arr[FFid].grouped == false) // if the slack release to the grouped FF, what should i do ?
+            {
+
+                double dist = (_FF_Q_arr.at(FFid).Qx_pos - _FF_D_arr.at(FFid).Dx_pos) * 0.5;
+                double D_dia_len = fabs(_FF_D_arr.at(FFid).Dx_pos - _FF_D_arr.at(FFid).D_fanin_pos.first) + fabs(_FF_D_arr.at(FFid).Dy_pos - _FF_D_arr.at(FFid).D_fanin_pos.second) + getSlack2ConnectedFF(FFid + _FF_D_OFFSET).at(0) / (_ptr_Parser->_displaceDelay);
+                double Dx_pos_r = _FF_D_arr.at(FFid).Dy_pos + _FF_D_arr.at(FFid).Dx_pos + dist; // x'=y+x //D shift right
+                double Dy_pos_r = _FF_D_arr.at(FFid).Dy_pos - _FF_D_arr.at(FFid).Dx_pos - dist; // y'=y-x
+                coor_w_se Dx_s, Dx_e;
+                vector<coor_w_se> dia_x_arr;
+                dia_x_arr.reserve(256);
+                Dx_s.pos_val = Dx_pos_r - (2 * D_dia_len);
+                Dx_s.type = 0;
+                Dx_s.or_ind = 0;
+                Dx_e.pos_val = Dx_pos_r + (2 * D_dia_len);
+                Dx_e.type = 1;
+                Dx_e.or_ind = 0;
+
+                dia_x_arr.push_back(Dx_s);
+                dia_x_arr.push_back(Dx_e);
+
+                coor_w_se Dy_s, Dy_e;
+                vector<coor_w_se> dia_y_arr;
+                dia_y_arr.reserve(256);
+                Dy_s.pos_val = Dy_pos_r - (2 * D_dia_len);
+                Dy_s.type = 0;
+                Dy_s.or_ind = 0;
+                Dy_e.pos_val = Dy_pos_r + (2 * D_dia_len);
+                Dy_e.type = 1;
+                Dy_e.or_ind = 0;
+
+                dia_y_arr.push_back(Dy_s);
+                dia_y_arr.push_back(Dy_e);
+
+                // Q part, run through all fanout.
+
+                double Qx_pos_r = _FF_Q_arr.at(FFid).Qy_pos + _FF_Q_arr.at(FFid).Qx_pos - dist; // Q shift left
+                double Qy_pos_r = _FF_Q_arr.at(FFid).Qy_pos - _FF_Q_arr.at(FFid).Qx_pos + dist;
+
+                for (size_t j = 0; j < _FF_Q_arr.at(FFid).Q_fanout_pos.size(); j++)
+                {
+                    double Q_dia_len = fabs(_FF_Q_arr.at(FFid).Qx_pos - _FF_Q_arr.at(FFid).Q_fanout_pos.at(j).first) + fabs(_FF_Q_arr.at(FFid).Qy_pos - _FF_Q_arr.at(FFid).Q_fanout_pos.at(j).second) + getSlack2ConnectedFF(FFid + _FF_Q_OFFSET).at(j) / (_ptr_Parser->_displaceDelay);
+                    coor_w_se Qx_s, Qx_e;
+                    Qx_s.pos_val = Qx_pos_r - (2 * Q_dia_len);
+                    Qx_s.type = 0;
+                    Qx_s.or_ind = j + 1;
+                    Qx_e.pos_val = Qx_pos_r + (2 * Q_dia_len);
+                    Qx_e.type = 1;
+                    Qx_e.or_ind = j + 1;
+
+                    dia_x_arr.push_back(Qx_s);
+                    dia_x_arr.push_back(Qx_e);
+
+                    coor_w_se Qy_s, Qy_e;
+                    Qy_s.pos_val = Qy_pos_r - (2 * Q_dia_len);
+                    Qy_s.type = 0;
+                    Qy_s.or_ind = j + 1;
+                    Qy_e.pos_val = Qy_pos_r + (2 * Q_dia_len);
+                    Qy_e.type = 1;
+                    Qy_e.or_ind = j + 1;
+
+                    dia_y_arr.push_back(Qy_s);
+                    dia_y_arr.push_back(Qy_e);
+                }
+
+                // draw feasible by using dia_x_arr, dia_y_arr
+                // 對 dia_x_arr 排序
+                std::sort(dia_x_arr.begin(), dia_x_arr.end(), compareByPosVal);
+
+                // 對 dia_y_arr 排序
+                std::sort(dia_y_arr.begin(), dia_y_arr.end(), compareByPosVal);
+
+                int target_x;
+                int bound_ctr_x = 0;
+                for (size_t k = 1; k < dia_x_arr.size(); k++)
+                {
+                    if ((dia_x_arr.at(k).type == 1) && (dia_x_arr.at(k - 1).type == 0))
+                    {
+                        target_x = k;
+                        bound_ctr_x++;
+                    }
+                }
+
+                int target_y;
+                int bound_ctr_y = 0;
+                for (size_t k = 1; k < dia_y_arr.size(); k++)
+                {
+                    if ((dia_y_arr.at(k).type == 1) && (dia_y_arr.at(k - 1).type == 0))
+                    {
+                        target_y = k;
+                        bound_ctr_y++;
+                    }
+                }
+
+                if ((bound_ctr_x != 1) || (bound_ctr_y != 1))
+                {
+                    // no feasible
+
+                    _FF_D_arr.at(FFid).hasfeasible = 0;
+                }
+                else
+                {
+                    // feasible
+                    _FF_D_arr.at(FFid).grouped = 0;
+                    _FF_D_arr.at(FFid).hasfeasible = 1;
+
+                    _FF_D_arr.at(FFid).fea_x_s.type = 0;
+                    _FF_D_arr.at(FFid).fea_x_s.pos_val = dia_x_arr.at(target_x - 1).pos_val;
+                    _FF_D_arr.at(FFid).fea_x_s.FF_id = i;
+
+                    _FF_D_arr.at(FFid).fea_x_e.type = 1;
+                    _FF_D_arr.at(FFid).fea_x_e.pos_val = dia_x_arr.at(target_x).pos_val;
+                    _FF_D_arr.at(FFid).fea_x_e.FF_id = i;
+
+                    _FF_D_arr.at(FFid).fea_y_s.type = 0;
+                    _FF_D_arr.at(FFid).fea_y_s.pos_val = dia_y_arr.at(target_y - 1).pos_val;
+                    _FF_D_arr.at(FFid).fea_y_s.FF_id = i;
+
+                    _FF_D_arr.at(FFid).fea_y_e.type = 1;
+                    _FF_D_arr.at(FFid).fea_y_e.pos_val = dia_y_arr.at(target_y).pos_val;
+                    _FF_D_arr.at(FFid).fea_y_e.FF_id = i;
+                }
+            }
+        }
+    }
+
+    for (size_t i = 0; i < final_group.size(); i++)
+    {
+        size_t id = final_group.at(i) - _FF_D_OFFSET;
+        Inst::FF_Q *ptr_FF_Q = &_FF_Q_arr[id];
+
+        for (size_t kk = 0; kk < ptr_FF_Q->fanoutCone.size(); kk++)
+        {
+            size_t FFid = ptr_FF_Q->fanoutCone[kk] - _FF_Q_OFFSET;
+
+            if (_FF_D_arr[FFid].grouped == false) // if the slack release to the grouped FF, what should i do ?
+            {
+
+                double dist = (_FF_Q_arr.at(FFid).Qx_pos - _FF_D_arr.at(FFid).Dx_pos) * 0.5;
+                double D_dia_len = fabs(_FF_D_arr.at(FFid).Dx_pos - _FF_D_arr.at(FFid).D_fanin_pos.first) + fabs(_FF_D_arr.at(FFid).Dy_pos - _FF_D_arr.at(FFid).D_fanin_pos.second) + getSlack2ConnectedFF(FFid + _FF_D_OFFSET).at(0) / (_ptr_Parser->_displaceDelay);
+                double Dx_pos_r = _FF_D_arr.at(FFid).Dy_pos + _FF_D_arr.at(FFid).Dx_pos + dist; // x'=y+x //D shift right
+                double Dy_pos_r = _FF_D_arr.at(FFid).Dy_pos - _FF_D_arr.at(FFid).Dx_pos - dist; // y'=y-x
+                coor_w_se Dx_s, Dx_e;
+                vector<coor_w_se> dia_x_arr;
+                dia_x_arr.reserve(256);
+                Dx_s.pos_val = Dx_pos_r - (2 * D_dia_len);
+                Dx_s.type = 0;
+                Dx_s.or_ind = 0;
+                Dx_e.pos_val = Dx_pos_r + (2 * D_dia_len);
+                Dx_e.type = 1;
+                Dx_e.or_ind = 0;
+
+                dia_x_arr.push_back(Dx_s);
+                dia_x_arr.push_back(Dx_e);
+
+                coor_w_se Dy_s, Dy_e;
+                vector<coor_w_se> dia_y_arr;
+                dia_y_arr.reserve(256);
+                Dy_s.pos_val = Dy_pos_r - (2 * D_dia_len);
+                Dy_s.type = 0;
+                Dy_s.or_ind = 0;
+                Dy_e.pos_val = Dy_pos_r + (2 * D_dia_len);
+                Dy_e.type = 1;
+                Dy_e.or_ind = 0;
+
+                dia_y_arr.push_back(Dy_s);
+                dia_y_arr.push_back(Dy_e);
+
+                // Q part, run through all fanout.
+
+                double Qx_pos_r = _FF_Q_arr.at(FFid).Qy_pos + _FF_Q_arr.at(FFid).Qx_pos - dist; // Q shift left
+                double Qy_pos_r = _FF_Q_arr.at(FFid).Qy_pos - _FF_Q_arr.at(FFid).Qx_pos + dist;
+
+                for (size_t j = 0; j < _FF_Q_arr.at(FFid).Q_fanout_pos.size(); j++)
+                {
+                    double Q_dia_len = fabs(_FF_Q_arr.at(FFid).Qx_pos - _FF_Q_arr.at(FFid).Q_fanout_pos.at(j).first) + fabs(_FF_Q_arr.at(FFid).Qy_pos - _FF_Q_arr.at(FFid).Q_fanout_pos.at(j).second) + getSlack2ConnectedFF(FFid + _FF_Q_OFFSET).at(j) / (_ptr_Parser->_displaceDelay);
+                    coor_w_se Qx_s, Qx_e;
+                    Qx_s.pos_val = Qx_pos_r - (2 * Q_dia_len);
+                    Qx_s.type = 0;
+                    Qx_s.or_ind = j + 1;
+                    Qx_e.pos_val = Qx_pos_r + (2 * Q_dia_len);
+                    Qx_e.type = 1;
+                    Qx_e.or_ind = j + 1;
+
+                    dia_x_arr.push_back(Qx_s);
+                    dia_x_arr.push_back(Qx_e);
+
+                    coor_w_se Qy_s, Qy_e;
+                    Qy_s.pos_val = Qy_pos_r - (2 * Q_dia_len);
+                    Qy_s.type = 0;
+                    Qy_s.or_ind = j + 1;
+                    Qy_e.pos_val = Qy_pos_r + (2 * Q_dia_len);
+                    Qy_e.type = 1;
+                    Qy_e.or_ind = j + 1;
+
+                    dia_y_arr.push_back(Qy_s);
+                    dia_y_arr.push_back(Qy_e);
+                }
+
+                // draw feasible by using dia_x_arr, dia_y_arr
+                // 對 dia_x_arr 排序
+                std::sort(dia_x_arr.begin(), dia_x_arr.end(), compareByPosVal);
+
+                // 對 dia_y_arr 排序
+                std::sort(dia_y_arr.begin(), dia_y_arr.end(), compareByPosVal);
+
+                int target_x;
+                int bound_ctr_x = 0;
+                for (size_t k = 1; k < dia_x_arr.size(); k++)
+                {
+                    if ((dia_x_arr.at(k).type == 1) && (dia_x_arr.at(k - 1).type == 0))
+                    {
+                        target_x = k;
+                        bound_ctr_x++;
+                    }
+                }
+
+                int target_y;
+                int bound_ctr_y = 0;
+                for (size_t k = 1; k < dia_y_arr.size(); k++)
+                {
+                    if ((dia_y_arr.at(k).type == 1) && (dia_y_arr.at(k - 1).type == 0))
+                    {
+                        target_y = k;
+                        bound_ctr_y++;
+                    }
+                }
+
+                if ((bound_ctr_x != 1) || (bound_ctr_y != 1))
+                {
+                    // no feasible
+
+                    _FF_D_arr.at(FFid).hasfeasible = 0;
+                }
+                else
+                {
+                    // feasible
+                    _FF_D_arr.at(FFid).grouped = 0;
+                    _FF_D_arr.at(FFid).hasfeasible = 1;
+
+                    _FF_D_arr.at(FFid).fea_x_s.type = 0;
+                    _FF_D_arr.at(FFid).fea_x_s.pos_val = dia_x_arr.at(target_x - 1).pos_val;
+                    _FF_D_arr.at(FFid).fea_x_s.FF_id = i;
+
+                    _FF_D_arr.at(FFid).fea_x_e.type = 1;
+                    _FF_D_arr.at(FFid).fea_x_e.pos_val = dia_x_arr.at(target_x).pos_val;
+                    _FF_D_arr.at(FFid).fea_x_e.FF_id = i;
+
+                    _FF_D_arr.at(FFid).fea_y_s.type = 0;
+                    _FF_D_arr.at(FFid).fea_y_s.pos_val = dia_y_arr.at(target_y - 1).pos_val;
+                    _FF_D_arr.at(FFid).fea_y_s.FF_id = i;
+
+                    _FF_D_arr.at(FFid).fea_y_e.type = 1;
+                    _FF_D_arr.at(FFid).fea_y_e.pos_val = dia_y_arr.at(target_y).pos_val;
+                    _FF_D_arr.at(FFid).fea_y_e.FF_id = i;
+                }
+            }
+        }
     }
 }
 
-vector<size_t> Solver::Solver::solve_findmaximal(const vector<size_t> &ff_group, size_t essential_ID, pair<double, double> x_pos_r, pair<double, double> y_pos_r)
+vector<size_t> Solver::Solver::solve_findmaximal(const vector<size_t> &ff_group, size_t essential_ID, pair<double, double> &x_pos_r, pair<double, double> &y_pos_r)
 {
     vector<size_t> result_group; // bigger id
-    double ess_x_s = _FF_D_arr[essential_ID - _FF_D_OFFSET].fea_x_s.pos_val;
-    double ess_x_e = _FF_D_arr[essential_ID - _FF_D_OFFSET].fea_x_e.pos_val;
-    double ess_y_s = _FF_D_arr[essential_ID - _FF_D_OFFSET].fea_y_s.pos_val;
-    double ess_y_e = _FF_D_arr[essential_ID - _FF_D_OFFSET].fea_y_e.pos_val;
+    double ess_x_s = _FF_D_arr.at(essential_ID - _FF_D_OFFSET).fea_x_s.pos_val;
+    double ess_x_e = _FF_D_arr.at(essential_ID - _FF_D_OFFSET).fea_x_e.pos_val;
+    double ess_y_s = _FF_D_arr.at(essential_ID - _FF_D_OFFSET).fea_y_s.pos_val;
+    double ess_y_e = _FF_D_arr.at(essential_ID - _FF_D_OFFSET).fea_y_e.pos_val;
 
-    for (int i = 0; i < ff_group.size(); i++)
+    for (size_t i = 0; i < ff_group.size(); i++)
     {
-        double ff_x_s = _FF_D_arr[ff_group[i] - _FF_D_OFFSET].fea_x_s.pos_val;
-        double ff_x_e = _FF_D_arr[ff_group[i] - _FF_D_OFFSET].fea_x_e.pos_val;
-        double ff_y_s = _FF_D_arr[ff_group[i] - _FF_D_OFFSET].fea_y_s.pos_val;
-        double ff_y_e = _FF_D_arr[ff_group[i] - _FF_D_OFFSET].fea_y_e.pos_val;
-        size_t id = _FF_D_arr[ff_group[i] - _FF_D_OFFSET].fea_x_s.FF_id;
+        double ff_x_s = _FF_D_arr.at(ff_group.at(i) - _FF_D_OFFSET).fea_x_s.pos_val;
+        double ff_x_e = _FF_D_arr.at(ff_group.at(i) - _FF_D_OFFSET).fea_x_e.pos_val;
+        double ff_y_s = _FF_D_arr.at(ff_group.at(i) - _FF_D_OFFSET).fea_y_s.pos_val;
+        double ff_y_e = _FF_D_arr.at(ff_group.at(i) - _FF_D_OFFSET).fea_y_e.pos_val;
+        // std::cout << ff_x_s << " ," << ff_x_e << std::endl;
+        size_t id = _FF_D_arr.at(ff_group.at(i) - _FF_D_OFFSET).fea_x_s.FF_id;
         bool valid_x = 0;
         bool valid_y = 0;
 
@@ -667,6 +1016,7 @@ vector<size_t> Solver::Solver::solve_findmaximal(const vector<size_t> &ff_group,
                 x_pos_r.first = ff_x_s;
                 x_pos_r.second = ess_x_e;
                 valid_x = 1;
+                // std::cout << x_pos_r.first << " ," << x_pos_r.second << std::endl;
             }
             else if (ess_x_e >= ff_x_e)
             {
@@ -755,37 +1105,122 @@ vector<size_t> Solver::Solver::solve_findmaximal(const vector<size_t> &ff_group,
 
     return result_group;
 }
+
+void Solver::Solver::solve_test()
+{
+    solve_initbuild();
+
+    solve_findfeasible();
+
+    for (size_t i = 0; i < _FF_D_arr.size(); i++)
+    {
+        vector<size_t> ff_group;
+        size_t id = i + _FF_D_OFFSET;
+        ff_group.push_back(id);
+        prePlace(ff_group, id, _FF_D_arr[i].getPosition());
+    }
+    legalize();
+}
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-void Solver::Solver::printOutput()
+void Solver::Solver::printOutput(const string &outFileName)
 {
-    /*
-    TODO: output
-    */
-    /*for (size_t i = 0; i < _FF_D_arr.size(); i++)
+    // step1: calculate how many instance need to be output
+    vector<bool> isChecked(_FF_D_arr.size(), false);
+    int instNum = 0;
+    for (size_t i = 0; i < _FF_D_arr.size(); i++)
     {
-        pair<double, double> pos = getFFPosition(&_FF_D_arr[i]);
-        string name = _FF_D_arr[i].getName();
-        std::cout << name << " " << pos.first << " " << pos.second << std::endl;
-    }*/
+        if (isChecked[i])
+        {
+            continue;
+        }
+        instNum++;
+        for (const auto &memberID : _FF_D_arr[i].grouped_member)
+        {
+            size_t id = memberID - _FF_D_OFFSET;
+            if (id != i)
+            {
+                isChecked[id] = true;
+            }
+        }
+    }
+
+    // step2: output the file
+    // reset the checked list
+    for (size_t i = 0; i < isChecked.size(); i++)
+    {
+        isChecked[i] = false;
+    }
+    // start to output
+    std::fstream outputFile;
+    outputFile.open(outFileName, std::fstream::out);
+    outputFile << std::setprecision(15);
+    outputFile << "CellInst " << instNum << "\n";
+    // output the Inst list
+    for (size_t i = 0; i < _FF_D_arr.size(); i++)
+    {
+        if (isChecked[i])
+        {
+            continue;
+        }
+        string instName = _FF_D_arr[i].getName().substr(0, _FF_D_arr[i].getName().find('/'));
+        pair<double, double> position = getFFPosition(&_FF_D_arr[i]);
+        outputFile << "Inst " << instName << " " << _ptr_Parser->_flipflopLib[_FF_D_arr[i].FF_type].Name
+                   << " " << position.first << " " << position.second << "\n";
+        for (const auto &memberID : _FF_D_arr[i].grouped_member)
+        {
+            size_t id = memberID - _FF_D_OFFSET;
+            if (id != i)
+            {
+                isChecked[id] = true;
+            }
+        }
+    }
+    // output the pin mapping
+    for (size_t i = 0; i < _FF_D_arr.size(); i++)
+    {
+        outputFile << _FF_D_arr[i].getOriName() << " map " << _FF_D_arr[i].getName() << "\n";
+        outputFile << _FF_Q_arr[i].getOriName() << " map " << _FF_Q_arr[i].getName() << "\n";
+        // find the clk name for origin and new pin
+        string newInstName = _FF_D_arr[i].getName().substr(0, _FF_D_arr[i].getName().find('/'));
+        string oriInstName = _FF_D_arr[i].getOriName().substr(0, _FF_D_arr[i].getOriName().find('/'));
+        string oriCLKName;
+        string newCLKName;
+        for (const auto &name : _ptr_Parser->_flipflopLib[_FF_D_arr[i].OriFF_type].PinName)
+        {
+            if (name.find("clk") != std::string::npos || name.find("CLK") != std::string::npos)
+            {
+                oriCLKName = name;
+                break;
+            }
+        }
+        for (const auto &name : _ptr_Parser->_flipflopLib[_FF_D_arr[i].FF_type].PinName)
+        {
+            if (name.find("clk") != std::string::npos || name.find("CLK") != std::string::npos)
+            {
+                newCLKName = name;
+                break;
+            }
+        }
+        outputFile << oriInstName + '/' + oriCLKName << " map " << newInstName + '/' + newCLKName << "\n";
+    }
+
+    std::cout << "Output successfully!" << std::endl;
+    outputFile.close();
 }
 
 void Solver::Solver::test()
 {
     // initSolver();
-    size_t inID = _Name_to_ID["C9/IN"];
-    size_t outID = _Name_to_ID["C12/OUT"];
-    std::cout << _ptr_STAEngine->getDistance(inID, outID) << std::endl;
-}
+    // legal test
+    legalize();
 
-bool Solver::Solver::mbffCluster() // can add parameter to implement the Window-based sequence generation
-{
-    /*
-    TODO: group the possible Multibit FF and use prePlace() function to place it and release slack
-    */
-    return true;
+    /*// STA test
+    size_t in = _Name_to_ID.at("C9/IN");
+    size_t out = _Name_to_ID.at("C12/OUT");
+    std::cout << _ptr_STAEngine->getDistance(in, out) << std::endl;*/
 }
 
 vector<size_t> Solver::Solver::prePlace(const vector<size_t> &ff_group, size_t essential_ID, pair<double, double> pos)
@@ -798,6 +1233,7 @@ vector<size_t> Solver::Solver::prePlace(const vector<size_t> &ff_group, size_t e
     // step1: choose the ff size from ff lib
     int maxSize = 0;
     size_t fftype = 0;
+    double area = 0;
     // here we choose the first FF with largest available size in the ff lib
     for (size_t i = 0; i < _ptr_Parser->_flipflopLib.size(); i++)
     {
@@ -805,6 +1241,12 @@ vector<size_t> Solver::Solver::prePlace(const vector<size_t> &ff_group, size_t e
         {
             maxSize = _ptr_Parser->_flipflopLib[i].Bit;
             fftype = i;
+            area = _ptr_Parser->_flipflopLib[i].Hight * _ptr_Parser->_flipflopLib[i].Width;
+        }
+        if (_ptr_Parser->_flipflopLib[i].Bit == maxSize && area > _ptr_Parser->_flipflopLib[i].Hight * _ptr_Parser->_flipflopLib[i].Width)
+        {
+            fftype = i;
+            area = _ptr_Parser->_flipflopLib[i].Hight * _ptr_Parser->_flipflopLib[i].Width;
         }
     }
 
@@ -839,8 +1281,8 @@ vector<size_t> Solver::Solver::prePlace(const vector<size_t> &ff_group, size_t e
             id2yMap.second = _ptr_Parser->_flipflopLib[fftype].PinCrdnate[i].second;
             DpinHeight.push_back(id2yMap);
         }
-        center.first += _ptr_Parser->_flipflopLib[fftype].PinCrdnate[i].first / maxSize;
-        center.second += _ptr_Parser->_flipflopLib[fftype].PinCrdnate[i].second / maxSize;
+        center.first += _ptr_Parser->_flipflopLib[fftype].PinCrdnate[i].first / (2 * maxSize);
+        center.second += _ptr_Parser->_flipflopLib[fftype].PinCrdnate[i].second / (2 * maxSize);
     }
     // initialize ID2HeightMap
     for (size_t i = 0; int(i) < maxSize; i++)
@@ -915,7 +1357,7 @@ vector<size_t> Solver::Solver::prePlace(const vector<size_t> &ff_group, size_t e
             pair<double, double> GatePinPos = findPinPosition(ptr_FF_D->outGate2Fanin[i]);
             double Oridis = std::fabs(OriPos.first - GatePinPos.first) + std::fabs(OriPos.second - GatePinPos.second);
             double Nowdis = std::fabs(NowPos.first - GatePinPos.first) + std::fabs(NowPos.second - GatePinPos.second);
-            double deltaSlack = (Nowdis - Oridis) / _ptr_Parser->_alpha;
+            double deltaSlack = (Nowdis - Oridis) / _ptr_Parser->_displaceDelay;
             if (_FF_Q_arr[ptr_FF_D->faninCone[i] - _FF_Q_OFFSET].slack > ptr_FF_D->slack - deltaSlack)
             {
                 _FF_Q_arr[ptr_FF_D->faninCone[i] - _FF_Q_OFFSET].slack = ptr_FF_D->slack - deltaSlack;
@@ -930,7 +1372,7 @@ vector<size_t> Solver::Solver::prePlace(const vector<size_t> &ff_group, size_t e
             pair<double, double> GatePinPos = findPinPosition(ptr_FF_Q->inGate2Fanout[i]);
             double Oridis = std::fabs(OriPos.first - GatePinPos.first) + std::fabs(OriPos.second - GatePinPos.second);
             double Nowdis = std::fabs(NowPos.first - GatePinPos.first) + std::fabs(NowPos.second - GatePinPos.second);
-            double deltaSlack = (Nowdis - Oridis) / _ptr_Parser->_alpha;
+            double deltaSlack = (Nowdis - Oridis) / _ptr_Parser->_displaceDelay;
             if (_FF_D_arr[ptr_FF_Q->fanoutCone[i] - _FF_D_OFFSET].slack > _FF_D_arr[ptr_FF_Q->fanoutCone[i] - _FF_D_OFFSET].getOriSlack() - deltaSlack)
             {
                 _FF_D_arr[ptr_FF_Q->fanoutCone[i] - _FF_D_OFFSET].slack = _FF_D_arr[ptr_FF_Q->fanoutCone[i] - _FF_D_OFFSET].getOriSlack() - deltaSlack;
@@ -943,560 +1385,10 @@ vector<size_t> Solver::Solver::prePlace(const vector<size_t> &ff_group, size_t e
 
 void Solver::Solver::legalize()
 {
-    std::cout << "Start the legalization!!" << std::endl;
-    int _MaxIteration = 30;
-    std::cout << "start building data structure for legalization." << std::endl;
-    // init the data structure for FF, we assume every FF would have 1 instance and we will assign id for it
-    vector<Inst::FF_D *> _id2ffPtr; // please change the ptr to the type you use and init it as following
-    _id2ffPtr.reserve(_FF_D_arr.size());
-    for (size_t i = 0; i < _FF_D_arr.size(); i++)
+    if (!_ptr_legalizer->legalize())
     {
-        _id2ffPtr.push_back(&_FF_D_arr[i]);
+        std::cout << "legalize fail!!!!!!!!!!!!!" << std::endl;
     }
-
-    // init the set of Gate
-    vector<Inst::Gate *> _id2gate; // please change the ptr to the type you use and init it as following
-    _id2gate.reserve(_Gate_arr.size());
-    for (size_t i = 0; i < _Gate_arr.size(); i++)
-    {
-        _id2gate.push_back(&_Gate_arr[i]);
-    }
-
-    std::cout << "start to get placement row information." << std::endl;
-    // init the set of placement row
-    vector<struct PlacementRow> _Pid2PLR = getPlacementRow();
-    /* in these legalization, we assume the placement row are uniform.
-    That is, the start x position, siteHeight, siteWidth, totalNumOfSites should be same.
-    Also, their start y position should be the lower placeRow's y + siteHeight.
-    Base on the assumption, we will first check whether the placement rows meet these conditions
-    */
-    if (!placementRowIsUniform(_Pid2PLR))
-    {
-        std::cout << "placement rows aren't uniform, the legaliztion might fail." << std::endl;
-    }
-
-    // start the algorithm part
-    // define some constant for the algorithm
-    size_t numPlaceRow = getPlaceRowNum();
-    double siteHeight = getSiteHeight();
-    double siteWidth = getSiteWidth();
-    double siteNum = getTotalSiteNum();
-    double LFx_pos = getLowerLeftX();
-    double LFy_pos = getLowerLeftY();
-
-    std::cout << "step 1: construct the matrix for placement grid." << std::endl;
-    // step 1: construct the matrix for placement grid
-    vector<vector<bool>> _availPosTable; // if the grid point is available, the value would be true
-    vector<vector<pair<size_t, int>>> _listWait4Legal;
-    _availPosTable.reserve(numPlaceRow);
-    for (size_t i = 0; i < numPlaceRow; i++)
-    {
-        vector<bool> initVec(int(siteNum), true);
-        _availPosTable.push_back(initVec);
-    }
-    for (const auto &ptr_gate : _id2gate)
-    {
-        // get the lower left and upper right's position for the gate
-        pair<double, double> lowerLeft = getGateLF(ptr_gate);
-        pair<double, double> upperRight = getGateUR(ptr_gate);
-        int LLx = std::floor((lowerLeft.first - LFx_pos) / siteWidth);
-        if (LLx < 0)
-        {
-            LLx = 0;
-        }
-        int LLy = std::floor((lowerLeft.second - LFy_pos) / siteHeight);
-        if (LLy < 0)
-        {
-            LLy = 0;
-        }
-        int URx = std::ceil((upperRight.first - LFx_pos) / siteWidth);
-        if (URx > siteNum - 1)
-        {
-            URx = int(siteNum - 1);
-        }
-        int URy = std::ceil((upperRight.second - LFy_pos) / siteHeight);
-        if (URy > int(numPlaceRow - 1))
-        {
-            URy = int(numPlaceRow - 1);
-        }
-        // set grid related in _availPosTable to false
-        for (int y = LLy; y < URy; y++)
-        {
-            for (int x = LLx; x < URx; x++)
-            {
-                _availPosTable[y][x] = false;
-            }
-        }
-    }
-    _listWait4Legal.reserve(numPlaceRow);
-    for (size_t i = 0; i < numPlaceRow; i++)
-    {
-        vector<pair<size_t, int>> initVec;
-        initVec.reserve(512);
-        _listWait4Legal.push_back(initVec);
-    }
-    std::cout << "step 2: throw all FF to the nearests placement grid and sort it to placement row." << std::endl;
-    // step 2: throw all FF to the nearests placement grid and sort it to placement row
-    vector<bool> check_list4ffInit(_id2ffPtr.size(), false);
-    for (size_t i = 0; i < _id2ffPtr.size(); i++)
-    {
-        if (check_list4ffInit[i])
-        {
-            continue;
-        }
-        pair<double, double> ffPos = getFFPosition(_id2ffPtr[i]);
-        int LLx = std::floor((ffPos.first - LFx_pos) / siteWidth);
-        int ffWidth = std::ceil(getFFWidth(_id2ffPtr[i]) / siteWidth);
-        // boundry checking
-        if (LLx < 0)
-        {
-            LLx = 0;
-        }
-        else if (LLx >= siteNum - ffWidth)
-        {
-            LLx = int(siteNum - ffWidth);
-        }
-        int LLy = std::floor((ffPos.second - LFy_pos) / siteHeight);
-        int ffHeight = std::floor(getFFHeight(_id2ffPtr[i]) / siteHeight);
-        // boundry checking
-        if (LLy < 0)
-        {
-            LLy = 0;
-        }
-        else if (LLy >= int(numPlaceRow - ffHeight))
-        {
-            LLy = int(numPlaceRow - ffHeight);
-        }
-        ffPos.first = LFx_pos + (double(LLx) * siteWidth);
-        ffPos.second = LFy_pos + (double(LLy) * siteHeight);
-        setFFPosition(_id2ffPtr[i], ffPos);
-        // add to waiting list
-        pair<size_t, int> pr(i, LLx);
-        _listWait4Legal[LLy].push_back(pr);
-        // if group with other, mark on them in the check list
-        vector<size_t> groupMemberID = getGroupMem(_id2ffPtr[i]); // this function should return the ID(position in _id2ffPtr) related to this ff
-        for (const auto &id : groupMemberID)
-        {
-            check_list4ffInit[id] = true;
-        }
-    }
-    // sort the wait list in the order of x index
-    for (size_t i = 0; i < _listWait4Legal.size(); i++)
-    {
-        std::sort(_listWait4Legal[i].begin(), _listWait4Legal[i].end(), [](pair<size_t, int> a, pair<size_t, int> b)
-                  {
-                      return a.second < b.second; // sort in acsending order
-                  });
-    }
-
-    /*// test!!!!!!!!!!!!!!!!!!!
-    for (const auto &aaa : _listWait4Legal[25])
-    {
-        std::cout << "id in _listWait4Legal[25] " << aaa.first << ", xPos: " << aaa.second << std::endl;
-    }
-
-    // end test*/
-
-    std::cout << "step 3: DP from lowest row to the highest." << std::endl;
-    // step 3: DP from lowest row to the highest
-    int iterCount = 1; // use for iteration counter
-    while (iterCount <= _MaxIteration)
-    {
-        // std::cout << "Start the iteration: " << iterCount << std::endl;
-        iterCount++;
-        // init some info for algorithm
-        int _MaxDisplacement = 100 * iterCount;
-        vector<vector<pair<size_t, int>>> _legalist = _listWait4Legal;
-        vector<vector<pair<int, int>>> _finalSolution(numPlaceRow); // pair<y index, x index>
-        vector<vector<bool>> _ffOccupation;                         // record the position occupied by ff
-        _ffOccupation.reserve(numPlaceRow);
-        for (size_t i = 0; i < numPlaceRow; i++) // init for _ffOccupation
-        {
-            vector<bool> initVec(int(siteNum), true);
-            _ffOccupation.push_back(initVec);
-        }
-        for (size_t i = 0; i < numPlaceRow; i++) // init _finalSolution
-        {
-            vector<pair<int, int>> initVec;
-            initVec.reserve(2 * _legalist[i].size());
-            _finalSolution.push_back(initVec);
-        }
-        // start the DP
-        bool Solvable = true;
-        // std::cout << "Start DP process" << std::endl;
-        for (size_t i = 0; i < numPlaceRow; i++)
-        {
-            if (_legalist[i].empty())
-            {
-                continue;
-            }
-            // std::cout << "Start to legalize row " << i << std::endl;
-            //   sort the legalist before start to legal it(some object may be added to it from lower row)
-            std::sort(_legalist[i].begin(), _legalist[i].end(), [](pair<size_t, int> a, pair<size_t, int> b)
-                      {
-                          return a.second < b.second; // sort in acsending order
-                      });
-            vector<vector<bool>> DPtable;                                // DPtable[ i-th object in legalist ][ position ]
-            vector<int> heightConstraint(int(siteNum), numPlaceRow - i); // record the available height for x position
-            vector<vector<vector<pair<int, int>>>> solutionList;         // pair<int y, int x>
-            vector<vector<unsigned int>> totalDisplace;                  // totalDisplace[# of object][last position]
-            // init totalDisplace
-            totalDisplace.reserve(_legalist[i].size());
-            for (size_t k = 0; k < _legalist[i].size(); k++)
-            {
-                vector<unsigned int> initVec(int(siteNum), -1);
-                totalDisplace.push_back(initVec);
-            }
-            // init solutionList
-            solutionList.reserve(_legalist[i].size());
-            for (size_t k = 0; k < _legalist[i].size(); k++)
-            {
-                vector<pair<int, int>> initList;
-                vector<vector<pair<int, int>>> initVec(int(siteNum), initList);
-                solutionList.push_back(initVec);
-            }
-            // init DP table
-            DPtable.reserve(_legalist[i].size());
-            for (size_t k = 0; k < _legalist[i].size(); k++)
-            {
-                vector<bool> initVec(int(siteNum), false);
-                DPtable.push_back(initVec);
-            }
-            // update the heightConstraint for  this placement row
-            for (int k = 0; k < int(siteNum); k++)
-            {
-                for (size_t j = i; j < numPlaceRow; j++)
-                {
-                    if (_availPosTable[j][k] && _ffOccupation[j][k])
-                    {
-                        continue;
-                    }
-                    else
-                    {
-                        heightConstraint[k] = j - i;
-                        break;
-                    }
-                }
-            }
-            // std::cout << "Start to construct table for the first item in legalist " << std::endl;
-            //   start to construct table for the first item in legalist
-            while (true)
-            {
-                // construct some local variables for iteration
-                int ffHeight = std::ceil(getFFHeight(_id2ffPtr[_legalist[i][0].first]) / siteHeight);
-                int ffWidth = std::ceil(getFFWidth(_id2ffPtr[_legalist[i][0].first]) / siteWidth);
-                int leftLimit = std::max(0, _legalist[i][0].second - _MaxDisplacement);
-                int rightLimit = std::min(_legalist[i][0].second + _MaxDisplacement, int(siteNum) - 1);
-                bool keepLoop = true;
-                if (_legalist[i].size() < 1)
-                {
-                    keepLoop = false;
-                    break;
-                }
-                for (int k = 0; k < int(siteNum); k++) // k means you can use 0~k-th grid
-                {
-                    if (k < ffWidth - 1) // space is not enough for put it in
-                    {
-                        DPtable[0][k] = false;
-                        continue;
-                    }
-                    if (k - ffWidth + 1 < leftLimit) // the placement is not exceeding left limit
-                    {
-                        DPtable[0][k] = false;
-                        continue;
-                    }
-                    if ((k > rightLimit) && !DPtable[0][k - 1]) // 0-th element has no solution, throw to higher row
-                    {
-                        /*
-                            can implement putting it to the lower row if it is space
-                        */
-                        if (i + 2 > numPlaceRow) // do not have upper row
-                        {
-                            Solvable = false;
-                            keepLoop = false;
-                            break;
-                        }
-                        else
-                        {
-                            _legalist[i + 1].push_back(_legalist[i][0]);
-                        }
-                        _legalist[i].erase(_legalist[i].begin());
-                        break;
-                    }
-                    bool isSafe = true;
-                    for (int j = k; j > std::max(k - ffWidth, -1); j--)
-                    {
-                        if (!_availPosTable[i][j] || !_ffOccupation[i][j])
-                        {
-                            isSafe = false;
-                            break;
-                        }
-                        if (heightConstraint[j] < ffHeight)
-                        {
-                            isSafe = false;
-                            break;
-                        }
-                    }
-                    if (isSafe)
-                    {
-                        DPtable[0][k] = true;
-                        unsigned int displace = abs(_legalist[i][0].second + ffWidth - 1 - k);
-                        if (totalDisplace[0][k - 1] >= displace)
-                        {
-                            totalDisplace[0][k] = displace;
-                            pair<int, int> position(int(i), k - ffWidth + 1);
-                            solutionList[0][k].push_back(position);
-                        }
-                        else
-                        {
-                            totalDisplace[0][k] = totalDisplace[0][k - 1];
-                            solutionList[0][k] = solutionList[0][k - 1];
-                        }
-                    }
-                    else
-                    {
-                        if (DPtable[0][k - 1])
-                        {
-                            DPtable[0][k] = true;
-                            totalDisplace[0][k] = totalDisplace[0][k - 1];
-                            solutionList[0][k] = solutionList[0][k - 1];
-                        }
-                    }
-                }
-                if (DPtable[0][int(siteNum) - 1])
-                {
-                    keepLoop = false;
-                }
-                else // item 0 cannot be legalize in row i
-                {
-                    if (i + 2 > siteNum) // do not have upper row
-                    {
-                        Solvable = false;
-                        keepLoop = false;
-                    }
-                    else
-                    {
-                        _legalist[i + 1].push_back(_legalist[i][0]);
-                    }
-                    _legalist[i].erase(_legalist[i].begin());
-                }
-                if (!keepLoop)
-                {
-                    break;
-                }
-            }
-            if (!Solvable)
-            {
-                break;
-            }
-            // std::cout << "DP for remaining object" << std::endl;
-            //   DP for remaining object
-            for (size_t j = 1; j < _legalist[i].size(); j++)
-            {
-                // optimize the memory usage
-                if (j >= 2)
-                {
-                    solutionList[j - 2].clear();
-                    totalDisplace[j - 2].clear();
-                    DPtable[j - 2].clear();
-                }
-
-                while (true)
-                {
-                    // construct some local variables for iteration
-                    int ffHeight = std::ceil(getFFHeight(_id2ffPtr[_legalist[i][j].first]) / siteHeight);
-                    int ffWidth = std::ceil(getFFWidth(_id2ffPtr[_legalist[i][j].first]) / siteWidth);
-                    int leftLimit = std::max(0, _legalist[i][j].second - _MaxDisplacement);
-                    int rightLimit = std::min(_legalist[i][j].second + _MaxDisplacement, int(siteNum) - 1);
-                    bool keepLoop = true;
-                    if (j >= _legalist[i].size())
-                    {
-                        break;
-                    }
-                    for (int k = 0; k < int(siteNum); k++) // k means you can use 0~k-th grid
-                    {
-                        solutionList[j][k].reserve(_legalist[i].size());
-                        if (k < ffWidth - 1) // space is not enough for put it in
-                        {
-                            DPtable[j][k] = false;
-                            continue;
-                        }
-                        if (k - ffWidth + 1 < leftLimit) // the placement is not exceeding left limit
-                        {
-                            DPtable[j][k] = false;
-                            continue;
-                        }
-                        if ((k > rightLimit) && !DPtable[j][k - 1]) // j-th element has no solution, throw to higher row
-                        {
-                            /*
-                                can implement putting it to the lower row if it is space
-                            */
-                            if (i + 2 > numPlaceRow) // do not have upper row
-                            {
-                                Solvable = false;
-                                keepLoop = false;
-                                break;
-                            }
-                            else
-                            {
-                                _legalist[i + 1].push_back(_legalist[i][j]);
-                            }
-                            _legalist[i].erase(_legalist[i].begin() + j);
-                            break;
-                        }
-                        bool isSafe = true; // see whether k ~ k-ffWidth have any ostacle
-                        for (int l = k; l > std::max(k - ffWidth, -1); l--)
-                        {
-                            if (!_availPosTable[i][l] || !_ffOccupation[i][l])
-                            {
-                                isSafe = false;
-                                break;
-                            }
-                            if (heightConstraint[l] < ffHeight)
-                            {
-                                isSafe = false;
-                                break;
-                            }
-                        }
-                        if (isSafe && DPtable[j - 1][k - ffWidth])
-                        {
-                            DPtable[j][k] = true;
-                            unsigned int displace = abs(_legalist[i][j].second + ffWidth - 1 - k);
-                            if (totalDisplace[j][k - 1] >= displace + totalDisplace[j - 1][k - ffWidth])
-                            {
-                                totalDisplace[j][k] = displace + totalDisplace[j - 1][k - ffWidth];
-                                pair<int, int> position(int(i), k - ffWidth + 1);
-                                solutionList[j][k] = solutionList[j - 1][k - ffWidth];
-                                solutionList[j][k].push_back(position);
-                            }
-                            else
-                            {
-                                totalDisplace[j][k] = totalDisplace[j][k - 1];
-                                solutionList[j][k] = solutionList[j][k - 1];
-                            }
-                        }
-                        else
-                        {
-                            if (DPtable[j][k - 1])
-                            {
-                                DPtable[j][k] = true;
-                                totalDisplace[j][k] = totalDisplace[j][k - 1];
-                                solutionList[j][k] = solutionList[j][k - 1];
-                            }
-                        }
-                    }
-                    if (DPtable[j][int(siteNum) - 1])
-                    {
-                        keepLoop = false;
-                    }
-                    else // item j cannot be legalize in row i
-                    {
-                        if (i + 2 > numPlaceRow) // do not have upper row
-                        {
-                            Solvable = false;
-                            keepLoop = false;
-                            break;
-                        }
-                        else
-                        {
-                            _legalist[i + 1].push_back(_legalist[i][j]);
-                        }
-                        _legalist[i].erase(_legalist[i].begin() + j);
-                    }
-                    if (!keepLoop)
-                    {
-                        break;
-                    }
-                }
-                // if unsolvable, there's no need to DP for remaining item
-                if (!Solvable)
-                {
-                    break;
-                }
-            }
-            if (!Solvable)
-            {
-                break;
-            }
-            // std::cout << "successfully solve row " << i << ", record the solution" << std::endl;
-            //   as the assign for one row complete,
-            //   we start to record the solution and start the legalize for next row
-            int counter = 0;
-
-            // test!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-            /*std::cout << "solutionList.size = " << solutionList.size() << std::endl;
-            std::cout << "_legalist[i].size = " << _legalist[i].size() << std::endl;
-            std::cout << "solutionList[_legalist[i].size() - 1].size = " << solutionList[_legalist[i].size() - 1].size() << std::endl;
-            std::cout << "int(siteNum) = " << int(siteNum) << std::endl;
-            int ccc = 0;
-            for (const auto &a : solutionList[_legalist[i].size() - 1][int(siteNum) - 1])
-            {
-                std::cout << "AAA" << std::endl;
-                if (a.first != int(i))
-                {
-                    std::cout << "i = " << i << std::endl;
-                    std::cout << "id = " << _legalist[i][ccc].first << std::endl;
-                    std::cout << "FFName = " << _id2ffPtr[_legalist[i][ccc].first]->getName() << std::endl;
-                    std::cout << "(*it).first = " << a.first << std::endl;
-                    std::cout << "(*it).second = " << a.second << std::endl;
-                    ccc++;
-                }
-            }
-            // end test*/
-            if (_legalist[i].empty())
-            {
-                continue;
-            }
-            for (auto it = solutionList[_legalist[i].size() - 1][int(siteNum) - 1].begin();
-                 it != solutionList[_legalist[i].size() - 1][int(siteNum) - 1].end(); it++)
-            {
-                // std::cout << "counter = " << counter << std::endl;
-                int ffHeight = std::ceil(getFFHeight(_id2ffPtr[_legalist[i][counter].first]) / siteHeight);
-                int ffWidth = std::ceil(getFFWidth(_id2ffPtr[_legalist[i][counter].first]) / siteWidth);
-                // std::cout << "FFName = " << _id2ffPtr[_legalist[i][counter].first]->getName() << std::endl;
-                // std::cout << "ffHeight = " << ffHeight << std::endl;
-                // std::cout << "ffWidth = " << ffWidth << std::endl;
-                // std::cout << "(*it).first = " << (*it).first << std::endl;
-                // std::cout << "(*it).second = " << (*it).second << std::endl;
-                _finalSolution[i].push_back(*it);
-                // record the space occupied by the placed ff
-                for (int y = 0; y < ffHeight; y++)
-                {
-                    for (int x = 0; x < ffWidth; x++)
-                    {
-                        _ffOccupation[(*it).first + y][(*it).second + x] = false;
-                    }
-                }
-                // std::cout << "counter = " << counter << " end" << std::endl;
-                counter++;
-            }
-        }
-
-        std::cout << "step 4: assign the result." << std::endl;
-        // step 4: assign the result. If can't be solved, relax the constraint and goto step 3.
-        if (!Solvable)
-        {
-            continue;
-        }
-        else
-        {
-            for (size_t i = 0; i < numPlaceRow; i++)
-            {
-                for (size_t j = 0; j < _legalist[i].size(); j++)
-                {
-                    pair<double, double> position;
-                    position.second = LFy_pos + double(_finalSolution[i][j].first) * siteHeight;
-                    position.first = LFx_pos + double(_finalSolution[i][j].second) * siteWidth;
-                    setFFPosition(_id2ffPtr[_legalist[i][j].first], position);
-                }
-            }
-            std::cout << "legalization successfully. \n"
-                      << std::endl;
-            return;
-        }
-    }
-    std::cout << "legalization fail !!!!!!!!! \n"
-              << std::endl;
 }
 
 vector<size_t> Solver::Solver::getGroupMem(Inst::FF_D *ptr) const
@@ -1918,4 +1810,221 @@ vector<pair<double, double>> Solver::Solver::getAdjacentPinPosition(size_t &id) 
         }
     }
     return pinPosition;
+}
+
+void Solver::Solver::findMaxSlack()
+{
+    // calculate the distance of critical path and convert to slack for every FF_D
+    for (size_t i = 0; i < _FF_D_arr.size(); i++)
+    {
+        size_t numOfConnectedFF = _FF_D_arr[i].faninCone.size();
+        if (numOfConnectedFF == 0) // for the case _FF_D is directly connect to PI
+        {
+            double distance = 0;
+            for (const auto &pinID : _NetList[_FF_D_arr[i].getRelatedNet()[0]])
+            {
+                if (_ID_to_instance[pinID]->getType() == Inst::INST_PIO)
+                {
+                    pair<double, double> PIPos = findPinPosition(pinID);
+                    pair<double, double> FFPos = _FF_D_arr[i].getPosition();
+                    distance += (std::fabs(PIPos.first - FFPos.first) + std::fabs(PIPos.second - FFPos.second));
+                    break;
+                }
+            }
+            _FF_D_arr[i].maxSlack = (distance / _ptr_Parser->_displaceDelay) + _FF_D_arr[i].getOriSlack();
+        }
+
+        double longestPath = 0;
+        for (size_t j = 0; j < numOfConnectedFF; j++)
+        {
+            double distance = 0;
+            if (_FF_D_arr[i].inGate2Fanin[j] != _ID_to_instance.size()) // if the former FF is not directly connect to FF_D
+            {
+                distance += _ptr_STAEngine->getDistance(_FF_D_arr[i].inGate2Fanin[j], _FF_D_arr[i].outGate2Fanin[j]);
+                // calculate the distance between outPin of gate and FF_D
+                pair<double, double> gatePos = findPinPosition(_FF_D_arr[i].outGate2Fanin[j]);
+                pair<double, double> FFPos = _FF_D_arr[i].getPosition();
+                distance += (std::fabs(gatePos.first - FFPos.first) + std::fabs(gatePos.second - FFPos.second));
+                // calculate the distance between inPin of gate and FF_D
+                gatePos = findPinPosition(_FF_D_arr[i].inGate2Fanin[j]);
+                FFPos = findPinPosition(_FF_D_arr[i].faninCone[j]);
+                distance += (std::fabs(gatePos.first - FFPos.first) + std::fabs(gatePos.second - FFPos.second));
+                // add the effect of Qpin delay
+                distance += (_ptr_Parser->_flipflopLib[_FF_Q_arr[_FF_D_arr[i].faninCone[j] - _FF_Q_OFFSET].FF_type].PinDelay) * _ptr_Parser->_displaceDelay;
+
+                // if the path is longer than the former longest path, record it
+                if (distance > longestPath)
+                {
+                    longestPath = distance;
+                }
+            }
+            else // the former FF is directly connect to FF_D
+            {
+                pair<double, double> FFPos = _FF_D_arr[i].getPosition();
+                pair<double, double> FFBeforePos = findPinPosition(_FF_D_arr[i].faninCone[j]);
+                distance += (std::fabs(FFBeforePos.first - FFPos.first) + std::fabs(FFBeforePos.second - FFPos.second));
+                // add the effect of Qpin delay
+                distance += (_ptr_Parser->_flipflopLib[_FF_Q_arr[_FF_D_arr[i].faninCone[j] - _FF_Q_OFFSET].FF_type].PinDelay) * _ptr_Parser->_displaceDelay;
+
+                // if the path is longer than the former longest path, record it
+                if (distance > longestPath)
+                {
+                    longestPath = distance;
+                }
+            }
+        }
+
+        // convert the longestPath into slack
+        _FF_D_arr[i].maxSlack = (longestPath / _ptr_Parser->_displaceDelay) + _FF_D_arr[i].getOriSlack();
+    }
+}
+
+vector<double> Solver::Solver::getSlack2ConnectedFF(const size_t &id) // the input should be global ID
+{
+    vector<double> output;
+    output.reserve(128);
+    // If the input is FF_D, we only return one slack, which is the slack of critical path
+    if (_ID_to_instance[id]->getType() == Inst::INST_FF_D)
+    {
+        size_t numOfConnectedFF = _FF_D_arr[id - _FF_D_OFFSET].faninCone.size();
+        // case1: _FF_D is directly connect to PI
+        if (numOfConnectedFF == 0) // for the case _FF_D is directly connect to PI
+        {
+            double distance = 0;
+            for (const auto &pinID : _NetList[_ID_to_instance[id]->getRelatedNet()[0]])
+            {
+                if (_ID_to_instance[pinID]->getType() == Inst::INST_PIO)
+                {
+                    pair<double, double> PIPos = findPinPosition(pinID);
+                    pair<double, double> FFPos = _ID_to_instance[id]->getPosition();
+                    distance += (std::fabs(PIPos.first - FFPos.first) + std::fabs(PIPos.second - FFPos.second));
+                    break;
+                }
+            }
+            output.push_back(_FF_D_arr[id - _FF_D_OFFSET].maxSlack - (distance / _ptr_Parser->_displaceDelay));
+            return output;
+        }
+
+        // case2: _FF_D is not directly connect to PI
+        double slackRemain = _FF_D_arr[id - _FF_D_OFFSET].maxSlack;
+        for (size_t i = 0; i < numOfConnectedFF; i++)
+        {
+            double distance = 0;
+            if (_FF_D_arr[id - _FF_D_OFFSET].inGate2Fanin[i] != _ID_to_instance.size()) // if the former FF is not directly connect to FF_D
+            {
+                distance += _ptr_STAEngine->getDistance(_FF_D_arr[id - _FF_D_OFFSET].inGate2Fanin[i], _FF_D_arr[id - _FF_D_OFFSET].outGate2Fanin[i]);
+                // calculate the distance between outPin of gate and FF_D
+                pair<double, double> gatePos = findPinPosition(_FF_D_arr[id - _FF_D_OFFSET].outGate2Fanin[i]);
+                pair<double, double> FFPos = _FF_D_arr[id - _FF_D_OFFSET].getPosition();
+                distance += (std::fabs(gatePos.first - FFPos.first) + std::fabs(gatePos.second - FFPos.second));
+                // calculate the distance between inPin of gate and FF_D
+                gatePos = findPinPosition(_FF_D_arr[id - _FF_D_OFFSET].inGate2Fanin[i]);
+                FFPos = findPinPosition(_FF_D_arr[id - _FF_D_OFFSET].faninCone[i]);
+                distance += (std::fabs(gatePos.first - FFPos.first) + std::fabs(gatePos.second - FFPos.second));
+                // add the effect of Qpin delay
+                distance += (_ptr_Parser->_flipflopLib[_FF_Q_arr[_FF_D_arr[id - _FF_D_OFFSET].faninCone[i] - _FF_Q_OFFSET].FF_type].PinDelay) * _ptr_Parser->_displaceDelay;
+
+                double s;
+                // check whether the connected FF has been grouped
+                if (_FF_Q_arr[_FF_D_arr[id - _FF_D_OFFSET].faninCone[i] - _FF_Q_OFFSET].grouped)
+                {
+                    // if is grouped give all slack to FF_D
+                    s = _FF_D_arr[id - _FF_D_OFFSET].maxSlack - (distance / _ptr_Parser->_displaceDelay);
+                }
+                else
+                {
+                    // if is not grouped give half slack to FF_D
+                    s = (_FF_D_arr[id - _FF_D_OFFSET].maxSlack - (distance / _ptr_Parser->_displaceDelay)) / 2;
+                }
+
+                if (s < slackRemain)
+                {
+                    slackRemain = s;
+                }
+            }
+            else // the former FF is directly connect to FF_D
+            {
+                pair<double, double> FFPos = _FF_D_arr[id - _FF_D_OFFSET].getPosition();
+                pair<double, double> FFBeforePos = findPinPosition(_FF_D_arr[id - _FF_D_OFFSET].faninCone[i]);
+                distance += (std::fabs(FFBeforePos.first - FFPos.first) + std::fabs(FFBeforePos.second - FFPos.second));
+                // add the effect of Qpin delay
+                distance += (_ptr_Parser->_flipflopLib[_FF_Q_arr[_FF_D_arr[id - _FF_D_OFFSET].faninCone[i] - _FF_Q_OFFSET].FF_type].PinDelay) * _ptr_Parser->_displaceDelay;
+
+                double s;
+                // check whether the connected FF has been grouped
+                if (_FF_Q_arr[_FF_D_arr[id - _FF_D_OFFSET].faninCone[i] - _FF_Q_OFFSET].grouped)
+                {
+                    // if is grouped give all slack to FF_D
+                    s = _FF_D_arr[id - _FF_D_OFFSET].maxSlack - (distance / _ptr_Parser->_displaceDelay);
+                }
+                else
+                {
+                    // if is not grouped give half slack to FF_D
+                    s = (_FF_D_arr[id - _FF_D_OFFSET].maxSlack - (distance / _ptr_Parser->_displaceDelay)) / 2;
+                }
+
+                if (s < slackRemain)
+                {
+                    slackRemain = s;
+                }
+            }
+        }
+        output.push_back(slackRemain);
+        return output;
+    }
+    else if (_ID_to_instance[id]->getType() == Inst::INST_FF_Q)
+    {
+        size_t numOfConnectedFF = _FF_Q_arr[id - _FF_Q_OFFSET].fanoutCone.size();
+        for (size_t i = 0; i < numOfConnectedFF; i++)
+        {
+            double distance = 0;
+            if (_FF_Q_arr[id - _FF_Q_OFFSET].inGate2Fanout[i] != _ID_to_instance.size()) // if the later FF is not directly connect to FF_Q
+            {
+                distance += _ptr_STAEngine->getDistance(_FF_Q_arr[id - _FF_Q_OFFSET].inGate2Fanout[i], _FF_Q_arr[id - _FF_Q_OFFSET].outGate2Fanout[i]);
+                // calculate the distance between outPin of gate and FF_D
+                pair<double, double> gatePos = findPinPosition(_FF_Q_arr[id - _FF_Q_OFFSET].outGate2Fanout[i]);
+                pair<double, double> FFPos = findPinPosition(_FF_Q_arr[id - _FF_Q_OFFSET].fanoutCone[i]);
+                distance += (std::fabs(gatePos.first - FFPos.first) + std::fabs(gatePos.second - FFPos.second));
+                // calculate the distance between inPin of gate and FF_Q
+                gatePos = findPinPosition(_FF_Q_arr[id - _FF_Q_OFFSET].inGate2Fanout[i]);
+                FFPos = _FF_Q_arr[id - _FF_Q_OFFSET].getPosition();
+                distance += (std::fabs(gatePos.first - FFPos.first) + std::fabs(gatePos.second - FFPos.second));
+                // add the effect of Qpin delay
+                distance += (_ptr_Parser->_flipflopLib[_FF_Q_arr[id - _FF_Q_OFFSET].FF_type].PinDelay) * _ptr_Parser->_displaceDelay;
+
+                // check whether the connected FF has been grouped
+                if (_FF_D_arr[_FF_Q_arr[id - _FF_Q_OFFSET].fanoutCone[i] - _FF_D_OFFSET].grouped)
+                {
+                    // if is grouped give all slack to FF_D
+                    output.push_back(_FF_D_arr[_FF_Q_arr[id - _FF_Q_OFFSET].fanoutCone[i] - _FF_D_OFFSET].maxSlack - (distance / _ptr_Parser->_displaceDelay));
+                }
+                else
+                {
+                    // if is not grouped give half slack to FF_D
+                    output.push_back((_FF_D_arr[_FF_Q_arr[id - _FF_Q_OFFSET].fanoutCone[i] - _FF_D_OFFSET].maxSlack - (distance / _ptr_Parser->_displaceDelay)) / 2);
+                }
+            }
+            else // the later FF is directly connect to FF_D
+            {
+                pair<double, double> FFPos = _FF_Q_arr[id - _FF_Q_OFFSET].getPosition();
+                pair<double, double> FFBeforePos = findPinPosition(_FF_Q_arr[id - _FF_Q_OFFSET].fanoutCone[i]);
+                distance += (std::fabs(FFBeforePos.first - FFPos.first) + std::fabs(FFBeforePos.second - FFPos.second));
+                // add the effect of Qpin delay
+                distance += (_ptr_Parser->_flipflopLib[_FF_Q_arr[id - _FF_Q_OFFSET].FF_type].PinDelay) * _ptr_Parser->_displaceDelay;
+
+                // check whether the connected FF has been grouped
+                if (_FF_D_arr[_FF_Q_arr[id - _FF_Q_OFFSET].fanoutCone[i] - _FF_D_OFFSET].grouped)
+                {
+                    // if is grouped give all slack to FF_D
+                    output.push_back(_FF_D_arr[_FF_Q_arr[id - _FF_Q_OFFSET].fanoutCone[i] - _FF_D_OFFSET].maxSlack - (distance / _ptr_Parser->_displaceDelay));
+                }
+                else
+                {
+                    // if is not grouped give half slack to FF_D
+                    output.push_back((_FF_D_arr[_FF_Q_arr[id - _FF_Q_OFFSET].fanoutCone[i] - _FF_D_OFFSET].maxSlack - (distance / _ptr_Parser->_displaceDelay)) / 2);
+                }
+            }
+        }
+    }
+    return output;
 }
