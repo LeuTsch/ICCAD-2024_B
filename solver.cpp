@@ -373,17 +373,60 @@ void Solver::Solver::solve_initbuild()
     for (size_t i = 0; i < _FF_D_arr.size(); i++)
     {
         size_t D_id = i + _FF_D_OFFSET;
-        vector<pair<double, double>> pos = getAdjacentPinPosition(D_id);
-        // std::cout << "check2" << std::endl;
-        //  check the size of pos is 1.
-        _FF_D_arr.at(i).D_fanin_pos = pos[0];
+
+        // std::cout << "size :" << _FF_D_arr.at(i).faninCone.size() << std::endl;
+        if (_FF_D_arr.at(i).faninCone.size() == 0)
+        {
+            pair<double, double> PIpos = {-1, -1}; // to check the PIO
+            _FF_D_arr.at(i).D_fanin_pos = PIpos;
+        }
+        else
+        {
+            size_t prev_id = _FF_D_arr.at(i).faninCone.at(0);
+            size_t gatepinid = _FF_D_arr.at(i).outGate2Fanin.at(0); // all index should get the same id
+
+            if (gatepinid == _ID_to_instance.size())
+            {
+                pair<double, double> ffQPinPos = findPinPosition(prev_id);
+                _FF_D_arr.at(i).D_fanin_pos = ffQPinPos;
+            }
+            else
+            {
+                pair<double, double> GatePinPos = findPinPosition(gatepinid);
+                _FF_D_arr.at(i).D_fanin_pos = GatePinPos;
+            }
+        }
     }
 
     for (size_t i = 0; i < _FF_Q_arr.size(); i++)
     {
         size_t Q_id = i + _FF_Q_OFFSET;
-        _FF_Q_arr.at(i).Q_fanout_pos.reserve(_FF_Q_arr.size());
-        _FF_Q_arr.at(i).Q_fanout_pos = getAdjacentPinPosition(Q_id);
+        _FF_Q_arr.at(i).Q_fanout_pos.reserve(128);
+
+        if (_FF_Q_arr.at(i).fanoutCone.size() == 0)
+        {
+            _FF_Q_arr.at(i).Q_fanout_pos = {{-1, -1}}; // check PIO
+        }
+        else
+        {
+            for (size_t j = 0; j < _FF_Q_arr.at(i).fanoutCone.size(); j++)
+            {
+
+                size_t next_id = _FF_Q_arr.at(i).fanoutCone.at(j);      // id of next ff
+                size_t gatepinid = _FF_Q_arr.at(i).inGate2Fanout.at(j); // pinID of fanout
+
+                if (gatepinid == _ID_to_instance.size())
+                {
+                    pair<double, double> ffDPinPos = findPinPosition(next_id); // directly connected, need to check later
+                    _FF_Q_arr.at(i).Q_fanout_pos.push_back(ffDPinPos);
+                }
+                else
+                {
+                    pair<double, double> GatePinPos = findPinPosition(gatepinid);
+                    _FF_Q_arr.at(i).Q_fanout_pos.push_back(GatePinPos);
+                }
+            }
+        }
     }
 
     std::cout << "initbuild is completed" << std::endl;
@@ -420,63 +463,71 @@ void Solver::Solver::solve_findfeasible()
     for (size_t i = 0; i < _FF_D_arr.size(); i++)
     {
         double dist = (_FF_Q_arr.at(i).Qx_pos - _FF_D_arr.at(i).Dx_pos) * 0.5;
-        double D_dia_len = fabs(_FF_D_arr.at(i).Dx_pos - _FF_D_arr.at(i).D_fanin_pos.first) + fabs(_FF_D_arr.at(i).Dy_pos - _FF_D_arr.at(i).D_fanin_pos.second) + _FF_D_arr.at(i).slack / (_ptr_Parser->_displaceDelay);
-        double Dx_pos_r = _FF_D_arr.at(i).Dy_pos + _FF_D_arr.at(i).Dx_pos + dist; // x'=y+x //D shift right
-        double Dy_pos_r = _FF_D_arr.at(i).Dy_pos - _FF_D_arr.at(i).Dx_pos - dist; // y'=y-x
-        coor_w_se Dx_s, Dx_e;
         vector<coor_w_se> dia_x_arr;
-        dia_x_arr.reserve(256);
-        Dx_s.pos_val = Dx_pos_r - (2 * D_dia_len);
-        Dx_s.type = 0;
-        Dx_s.or_ind = 0;
-        Dx_e.pos_val = Dx_pos_r + (2 * D_dia_len);
-        Dx_e.type = 1;
-        Dx_e.or_ind = 0;
-
-        dia_x_arr.push_back(Dx_s);
-        dia_x_arr.push_back(Dx_e);
-
-        coor_w_se Dy_s, Dy_e;
         vector<coor_w_se> dia_y_arr;
-        dia_y_arr.reserve(256);
-        Dy_s.pos_val = Dy_pos_r - (2 * D_dia_len);
-        Dy_s.type = 0;
-        Dy_s.or_ind = 0;
-        Dy_e.pos_val = Dy_pos_r + (2 * D_dia_len);
-        Dy_e.type = 1;
-        Dy_e.or_ind = 0;
 
-        dia_y_arr.push_back(Dy_s);
-        dia_y_arr.push_back(Dy_e);
+        if (_FF_D_arr.at(i).D_fanin_pos.first != -1 || _FF_D_arr.at(i).D_fanin_pos.second != -1) // avoid PI
+        {
+            double D_dia_len = fabs(_FF_D_arr.at(i).Dx_pos - _FF_D_arr.at(i).D_fanin_pos.first) + fabs(_FF_D_arr.at(i).Dy_pos - _FF_D_arr.at(i).D_fanin_pos.second) + getSlack2ConnectedFF(i + _FF_D_OFFSET).at(0) / (_ptr_Parser->_displaceDelay);
+            double Dx_pos_r = _FF_D_arr.at(i).Dy_pos + _FF_D_arr.at(i).Dx_pos + 2 * dist; // x'=y+x //D shift right
+            double Dy_pos_r = _FF_D_arr.at(i).Dy_pos - _FF_D_arr.at(i).Dx_pos - 2 * dist; // y'=y-x
+
+            coor_w_se Dx_s, Dx_e;
+            dia_x_arr.reserve(256);
+            Dx_s.pos_val = Dx_pos_r - (2 * D_dia_len);
+            Dx_s.type = 0;
+            Dx_s.or_ind = 0;
+            Dx_e.pos_val = Dx_pos_r + (2 * D_dia_len);
+            Dx_e.type = 1;
+            Dx_e.or_ind = 0;
+
+            dia_x_arr.push_back(Dx_s);
+            dia_x_arr.push_back(Dx_e);
+
+            coor_w_se Dy_s, Dy_e;
+            dia_y_arr.reserve(256);
+            Dy_s.pos_val = Dy_pos_r - (2 * D_dia_len);
+            Dy_s.type = 0;
+            Dy_s.or_ind = 0;
+            Dy_e.pos_val = Dy_pos_r + (2 * D_dia_len);
+            Dy_e.type = 1;
+            Dy_e.or_ind = 0;
+
+            dia_y_arr.push_back(Dy_s);
+            dia_y_arr.push_back(Dy_e);
+        }
 
         // Q part, run through all fanout.
 
-        double Qx_pos_r = _FF_Q_arr.at(i).Qy_pos + _FF_Q_arr.at(i).Qx_pos - dist; // Q shift left
-        double Qy_pos_r = _FF_Q_arr.at(i).Qy_pos - _FF_Q_arr.at(i).Qx_pos + dist;
-        for (size_t j = 0; j < _FF_Q_arr.at(i).Q_fanout_pos.size(); j++)
+        if (_FF_Q_arr.at(i).Q_fanout_pos.at(0).first != -1 || _FF_Q_arr.at(i).Q_fanout_pos.at(0).second != -1)
         {
-            double Q_dia_len = fabs(_FF_Q_arr.at(i).Qx_pos - _FF_Q_arr.at(i).Q_fanout_pos.at(j).first) + fabs(_FF_Q_arr.at(i).Qy_pos - _FF_Q_arr.at(i).Q_fanout_pos.at(j).second) + _FF_Q_arr.at(i).slack / (_ptr_Parser->_displaceDelay);
-            coor_w_se Qx_s, Qx_e;
-            Qx_s.pos_val = Qx_pos_r - (2 * Q_dia_len);
-            Qx_s.type = 0;
-            Qx_s.or_ind = j + 1;
-            Qx_e.pos_val = Qx_pos_r + (2 * Q_dia_len);
-            Qx_e.type = 1;
-            Qx_e.or_ind = j + 1;
+            double Qx_pos_r = _FF_Q_arr.at(i).Qy_pos + _FF_Q_arr.at(i).Qx_pos - 2 * dist; // Q shift left
+            double Qy_pos_r = _FF_Q_arr.at(i).Qy_pos - _FF_Q_arr.at(i).Qx_pos + 2 * dist;
+            for (size_t j = 0; j < _FF_Q_arr.at(i).Q_fanout_pos.size(); j++)
+            {
+                double Q_dia_len = fabs(_FF_Q_arr.at(i).Qx_pos - _FF_Q_arr.at(i).Q_fanout_pos.at(j).first) + fabs(_FF_Q_arr.at(i).Qy_pos - _FF_Q_arr.at(i).Q_fanout_pos.at(j).second) + getSlack2ConnectedFF(i + _FF_Q_OFFSET).at(j) / (_ptr_Parser->_displaceDelay);
+                coor_w_se Qx_s, Qx_e;
+                Qx_s.pos_val = Qx_pos_r - (2 * Q_dia_len);
+                Qx_s.type = 0;
+                Qx_s.or_ind = j + 1;
+                Qx_e.pos_val = Qx_pos_r + (2 * Q_dia_len);
+                Qx_e.type = 1;
+                Qx_e.or_ind = j + 1;
 
-            dia_x_arr.push_back(Qx_s);
-            dia_x_arr.push_back(Qx_e);
+                dia_x_arr.push_back(Qx_s);
+                dia_x_arr.push_back(Qx_e);
 
-            coor_w_se Qy_s, Qy_e;
-            Qy_s.pos_val = Qy_pos_r - (2 * Q_dia_len);
-            Qy_s.type = 0;
-            Qy_s.or_ind = j + 1;
-            Qy_e.pos_val = Qy_pos_r + (2 * Q_dia_len);
-            Qy_e.type = 1;
-            Qy_e.or_ind = j + 1;
+                coor_w_se Qy_s, Qy_e;
+                Qy_s.pos_val = Qy_pos_r - (2 * Q_dia_len);
+                Qy_s.type = 0;
+                Qy_s.or_ind = j + 1;
+                Qy_e.pos_val = Qy_pos_r + (2 * Q_dia_len);
+                Qy_e.type = 1;
+                Qy_e.or_ind = j + 1;
 
-            dia_y_arr.push_back(Qy_s);
-            dia_y_arr.push_back(Qy_e);
+                dia_y_arr.push_back(Qy_s);
+                dia_y_arr.push_back(Qy_e);
+            }
         }
 
         // draw feasible by using dia_x_arr, dia_y_arr
@@ -535,6 +586,10 @@ void Solver::Solver::solve_findfeasible()
             _FF_D_arr.at(i).fea_y_e.type = 1;
             _FF_D_arr.at(i).fea_y_e.pos_val = dia_y_arr.at(target_y).pos_val;
             _FF_D_arr.at(i).fea_y_e.FF_id = i;
+        }
+        if (_FF_D_arr.at(i).hasfeasible == 1)
+        {
+            std::cout << _FF_D_arr.at(i).fea_x_s.pos_val << " " << _FF_D_arr.at(i).fea_x_e.pos_val << std::endl;
         }
     }
 
@@ -603,8 +658,6 @@ void Solver::Solver::solve()
 
                     result_group = solve_findmaximal(ff_group, esssential_ff, x_pos_r, y_pos_r);
 
-                    // std::cout << x_pos_r.first << " ," << x_pos_r.second << std::endl;
-
                     result_group.push_back(esssential_ff);
 
                     // preplace and slack release
@@ -614,17 +667,14 @@ void Solver::Solver::solve()
                     double x_ori = pos.first;
                     double y_ori = pos.second;
                     pos.first = (x_ori - y_ori) * 0.5; // change to original coordinate
-                    // std::cout << "X: " << pos.first <<std::endl;
                     pos.second = (x_ori + y_ori) * 0.5;
-                    // std::cout << "Y: " << pos.second <<std::endl;
-                    //  std::cout << pos.first << " ," << pos.second << std::endl;
+
                     //   std::cout << "preplace begin" << std::endl;
                     final_group = prePlace(result_group, esssential_ff, pos);
                     // std::cout << "finalgroup size: " << final_group.size() <<std::endl;
 
                     // final_group有essential
 
-                    // std::cout << "preplace is completed" << std::endl;
                     //  calculate the feasible
                     feasible_cal(final_group);
                     // solve_findfeasible();
@@ -678,65 +728,72 @@ void Solver::Solver::feasible_cal(const vector<size_t> &final_group)
             if (_FF_D_arr[FFid].grouped == false) // if the slack release to the grouped FF, what should i do ?
             {
 
-                double dist = (_FF_Q_arr.at(FFid).Qx_pos - _FF_D_arr.at(FFid).Dx_pos) * 0.5;
-                double D_dia_len = fabs(_FF_D_arr.at(FFid).Dx_pos - _FF_D_arr.at(FFid).D_fanin_pos.first) + fabs(_FF_D_arr.at(FFid).Dy_pos - _FF_D_arr.at(FFid).D_fanin_pos.second) + _FF_D_arr.at(FFid).slack / (_ptr_Parser->_displaceDelay);
-                double Dx_pos_r = _FF_D_arr.at(FFid).Dy_pos + _FF_D_arr.at(FFid).Dx_pos + dist; // x'=y+x //D shift right
-                double Dy_pos_r = _FF_D_arr.at(FFid).Dy_pos - _FF_D_arr.at(FFid).Dx_pos - dist; // y'=y-x
-                coor_w_se Dx_s, Dx_e;
+                double dist = (_FF_Q_arr.at(i).Qx_pos - _FF_D_arr.at(i).Dx_pos) * 0.5;
                 vector<coor_w_se> dia_x_arr;
-                dia_x_arr.reserve(256);
-                Dx_s.pos_val = Dx_pos_r - (2 * D_dia_len);
-                Dx_s.type = 0;
-                Dx_s.or_ind = 0;
-                Dx_e.pos_val = Dx_pos_r + (2 * D_dia_len);
-                Dx_e.type = 1;
-                Dx_e.or_ind = 0;
-
-                dia_x_arr.push_back(Dx_s);
-                dia_x_arr.push_back(Dx_e);
-
-                coor_w_se Dy_s, Dy_e;
                 vector<coor_w_se> dia_y_arr;
-                dia_y_arr.reserve(256);
-                Dy_s.pos_val = Dy_pos_r - (2 * D_dia_len);
-                Dy_s.type = 0;
-                Dy_s.or_ind = 0;
-                Dy_e.pos_val = Dy_pos_r + (2 * D_dia_len);
-                Dy_e.type = 1;
-                Dy_e.or_ind = 0;
 
-                dia_y_arr.push_back(Dy_s);
-                dia_y_arr.push_back(Dy_e);
+                if (_FF_D_arr.at(FFid).D_fanin_pos.first != -1 || _FF_D_arr.at(FFid).D_fanin_pos.second != -1) // avoid PI
+                {
+                    double D_dia_len = fabs(_FF_D_arr.at(FFid).Dx_pos - _FF_D_arr.at(FFid).D_fanin_pos.first) + fabs(_FF_D_arr.at(FFid).Dy_pos - _FF_D_arr.at(FFid).D_fanin_pos.second) + getSlack2ConnectedFF(FFid + _FF_D_OFFSET).at(0) / (_ptr_Parser->_displaceDelay);
+                    double Dx_pos_r = _FF_D_arr.at(FFid).Dy_pos + _FF_D_arr.at(FFid).Dx_pos + 2 * dist; // x'=y+x //D shift right
+                    double Dy_pos_r = _FF_D_arr.at(FFid).Dy_pos - _FF_D_arr.at(FFid).Dx_pos - 2 * dist; // y'=y-x
+
+                    coor_w_se Dx_s, Dx_e;
+                    dia_x_arr.reserve(256);
+                    Dx_s.pos_val = Dx_pos_r - (2 * D_dia_len);
+                    Dx_s.type = 0;
+                    Dx_s.or_ind = 0;
+                    Dx_e.pos_val = Dx_pos_r + (2 * D_dia_len);
+                    Dx_e.type = 1;
+                    Dx_e.or_ind = 0;
+
+                    dia_x_arr.push_back(Dx_s);
+                    dia_x_arr.push_back(Dx_e);
+
+                    coor_w_se Dy_s, Dy_e;
+                    dia_y_arr.reserve(256);
+                    Dy_s.pos_val = Dy_pos_r - (2 * D_dia_len);
+                    Dy_s.type = 0;
+                    Dy_s.or_ind = 0;
+                    Dy_e.pos_val = Dy_pos_r + (2 * D_dia_len);
+                    Dy_e.type = 1;
+                    Dy_e.or_ind = 0;
+
+                    dia_y_arr.push_back(Dy_s);
+                    dia_y_arr.push_back(Dy_e);
+                }
 
                 // Q part, run through all fanout.
 
-                double Qx_pos_r = _FF_Q_arr.at(FFid).Qy_pos + _FF_Q_arr.at(FFid).Qx_pos - dist; // Q shift left
-                double Qy_pos_r = _FF_Q_arr.at(FFid).Qy_pos - _FF_Q_arr.at(FFid).Qx_pos + dist;
-
-                for (size_t j = 0; j < _FF_Q_arr.at(FFid).Q_fanout_pos.size(); j++)
+                if (_FF_Q_arr.at(FFid).Q_fanout_pos.at(0).first != -1 || _FF_Q_arr.at(FFid).Q_fanout_pos.at(0).second != -1)
                 {
-                    double Q_dia_len = fabs(_FF_Q_arr.at(FFid).Qx_pos - _FF_Q_arr.at(FFid).Q_fanout_pos.at(j).first) + fabs(_FF_Q_arr.at(FFid).Qy_pos - _FF_Q_arr.at(FFid).Q_fanout_pos.at(j).second) + _FF_Q_arr.at(FFid).slack / (_ptr_Parser->_displaceDelay);
-                    coor_w_se Qx_s, Qx_e;
-                    Qx_s.pos_val = Qx_pos_r - (2 * Q_dia_len);
-                    Qx_s.type = 0;
-                    Qx_s.or_ind = j + 1;
-                    Qx_e.pos_val = Qx_pos_r + (2 * Q_dia_len);
-                    Qx_e.type = 1;
-                    Qx_e.or_ind = j + 1;
+                    double Qx_pos_r = _FF_Q_arr.at(FFid).Qy_pos + _FF_Q_arr.at(FFid).Qx_pos - 2 * dist; // Q shift left
+                    double Qy_pos_r = _FF_Q_arr.at(FFid).Qy_pos - _FF_Q_arr.at(FFid).Qx_pos + 2 * dist;
+                    for (size_t j = 0; j < _FF_Q_arr.at(FFid).Q_fanout_pos.size(); j++)
+                    {
+                        double Q_dia_len = fabs(_FF_Q_arr.at(FFid).Qx_pos - _FF_Q_arr.at(FFid).Q_fanout_pos.at(j).first) + fabs(_FF_Q_arr.at(FFid).Qy_pos - _FF_Q_arr.at(FFid).Q_fanout_pos.at(j).second) + getSlack2ConnectedFF(FFid + _FF_Q_OFFSET).at(j) / (_ptr_Parser->_displaceDelay);
+                        coor_w_se Qx_s, Qx_e;
+                        Qx_s.pos_val = Qx_pos_r - (2 * Q_dia_len);
+                        Qx_s.type = 0;
+                        Qx_s.or_ind = j + 1;
+                        Qx_e.pos_val = Qx_pos_r + (2 * Q_dia_len);
+                        Qx_e.type = 1;
+                        Qx_e.or_ind = j + 1;
 
-                    dia_x_arr.push_back(Qx_s);
-                    dia_x_arr.push_back(Qx_e);
+                        dia_x_arr.push_back(Qx_s);
+                        dia_x_arr.push_back(Qx_e);
 
-                    coor_w_se Qy_s, Qy_e;
-                    Qy_s.pos_val = Qy_pos_r - (2 * Q_dia_len);
-                    Qy_s.type = 0;
-                    Qy_s.or_ind = j + 1;
-                    Qy_e.pos_val = Qy_pos_r + (2 * Q_dia_len);
-                    Qy_e.type = 1;
-                    Qy_e.or_ind = j + 1;
+                        coor_w_se Qy_s, Qy_e;
+                        Qy_s.pos_val = Qy_pos_r - (2 * Q_dia_len);
+                        Qy_s.type = 0;
+                        Qy_s.or_ind = j + 1;
+                        Qy_e.pos_val = Qy_pos_r + (2 * Q_dia_len);
+                        Qy_e.type = 1;
+                        Qy_e.or_ind = j + 1;
 
-                    dia_y_arr.push_back(Qy_s);
-                    dia_y_arr.push_back(Qy_e);
+                        dia_y_arr.push_back(Qy_s);
+                        dia_y_arr.push_back(Qy_e);
+                    }
                 }
 
                 // draw feasible by using dia_x_arr, dia_y_arr
@@ -812,65 +869,72 @@ void Solver::Solver::feasible_cal(const vector<size_t> &final_group)
             if (_FF_D_arr[FFid].grouped == false) // if the slack release to the grouped FF, what should i do ?
             {
 
-                double dist = (_FF_Q_arr.at(FFid).Qx_pos - _FF_D_arr.at(FFid).Dx_pos) * 0.5;
-                double D_dia_len = fabs(_FF_D_arr.at(FFid).Dx_pos - _FF_D_arr.at(FFid).D_fanin_pos.first) + fabs(_FF_D_arr.at(FFid).Dy_pos - _FF_D_arr.at(FFid).D_fanin_pos.second) + _FF_D_arr.at(FFid).slack / (_ptr_Parser->_displaceDelay);
-                double Dx_pos_r = _FF_D_arr.at(FFid).Dy_pos + _FF_D_arr.at(FFid).Dx_pos + dist; // x'=y+x //D shift right
-                double Dy_pos_r = _FF_D_arr.at(FFid).Dy_pos - _FF_D_arr.at(FFid).Dx_pos - dist; // y'=y-x
-                coor_w_se Dx_s, Dx_e;
+                double dist = (_FF_Q_arr.at(i).Qx_pos - _FF_D_arr.at(i).Dx_pos) * 0.5;
                 vector<coor_w_se> dia_x_arr;
-                dia_x_arr.reserve(256);
-                Dx_s.pos_val = Dx_pos_r - (2 * D_dia_len);
-                Dx_s.type = 0;
-                Dx_s.or_ind = 0;
-                Dx_e.pos_val = Dx_pos_r + (2 * D_dia_len);
-                Dx_e.type = 1;
-                Dx_e.or_ind = 0;
-
-                dia_x_arr.push_back(Dx_s);
-                dia_x_arr.push_back(Dx_e);
-
-                coor_w_se Dy_s, Dy_e;
                 vector<coor_w_se> dia_y_arr;
-                dia_y_arr.reserve(256);
-                Dy_s.pos_val = Dy_pos_r - (2 * D_dia_len);
-                Dy_s.type = 0;
-                Dy_s.or_ind = 0;
-                Dy_e.pos_val = Dy_pos_r + (2 * D_dia_len);
-                Dy_e.type = 1;
-                Dy_e.or_ind = 0;
 
-                dia_y_arr.push_back(Dy_s);
-                dia_y_arr.push_back(Dy_e);
+                if (_FF_D_arr.at(FFid).D_fanin_pos.first != -1 || _FF_D_arr.at(FFid).D_fanin_pos.second != -1) // avoid PI
+                {
+                    double D_dia_len = fabs(_FF_D_arr.at(FFid).Dx_pos - _FF_D_arr.at(FFid).D_fanin_pos.first) + fabs(_FF_D_arr.at(FFid).Dy_pos - _FF_D_arr.at(FFid).D_fanin_pos.second) + getSlack2ConnectedFF(FFid + _FF_D_OFFSET).at(0) / (_ptr_Parser->_displaceDelay);
+                    double Dx_pos_r = _FF_D_arr.at(FFid).Dy_pos + _FF_D_arr.at(FFid).Dx_pos + 2 * dist; // x'=y+x //D shift right
+                    double Dy_pos_r = _FF_D_arr.at(FFid).Dy_pos - _FF_D_arr.at(FFid).Dx_pos - 2 * dist; // y'=y-x
+
+                    coor_w_se Dx_s, Dx_e;
+                    dia_x_arr.reserve(256);
+                    Dx_s.pos_val = Dx_pos_r - (2 * D_dia_len);
+                    Dx_s.type = 0;
+                    Dx_s.or_ind = 0;
+                    Dx_e.pos_val = Dx_pos_r + (2 * D_dia_len);
+                    Dx_e.type = 1;
+                    Dx_e.or_ind = 0;
+
+                    dia_x_arr.push_back(Dx_s);
+                    dia_x_arr.push_back(Dx_e);
+
+                    coor_w_se Dy_s, Dy_e;
+                    dia_y_arr.reserve(256);
+                    Dy_s.pos_val = Dy_pos_r - (2 * D_dia_len);
+                    Dy_s.type = 0;
+                    Dy_s.or_ind = 0;
+                    Dy_e.pos_val = Dy_pos_r + (2 * D_dia_len);
+                    Dy_e.type = 1;
+                    Dy_e.or_ind = 0;
+
+                    dia_y_arr.push_back(Dy_s);
+                    dia_y_arr.push_back(Dy_e);
+                }
 
                 // Q part, run through all fanout.
 
-                double Qx_pos_r = _FF_Q_arr.at(FFid).Qy_pos + _FF_Q_arr.at(FFid).Qx_pos - dist; // Q shift left
-                double Qy_pos_r = _FF_Q_arr.at(FFid).Qy_pos - _FF_Q_arr.at(FFid).Qx_pos + dist;
-
-                for (size_t j = 0; j < _FF_Q_arr.at(FFid).Q_fanout_pos.size(); j++)
+                if (_FF_Q_arr.at(FFid).Q_fanout_pos.at(0).first != -1 || _FF_Q_arr.at(FFid).Q_fanout_pos.at(0).second != -1)
                 {
-                    double Q_dia_len = fabs(_FF_Q_arr.at(FFid).Qx_pos - _FF_Q_arr.at(FFid).Q_fanout_pos.at(j).first) + fabs(_FF_Q_arr.at(FFid).Qy_pos - _FF_Q_arr.at(FFid).Q_fanout_pos.at(j).second) + _FF_Q_arr.at(FFid).slack / (_ptr_Parser->_displaceDelay);
-                    coor_w_se Qx_s, Qx_e;
-                    Qx_s.pos_val = Qx_pos_r - (2 * Q_dia_len);
-                    Qx_s.type = 0;
-                    Qx_s.or_ind = j + 1;
-                    Qx_e.pos_val = Qx_pos_r + (2 * Q_dia_len);
-                    Qx_e.type = 1;
-                    Qx_e.or_ind = j + 1;
+                    double Qx_pos_r = _FF_Q_arr.at(FFid).Qy_pos + _FF_Q_arr.at(FFid).Qx_pos - 2 * dist; // Q shift left
+                    double Qy_pos_r = _FF_Q_arr.at(FFid).Qy_pos - _FF_Q_arr.at(FFid).Qx_pos + 2 * dist;
+                    for (size_t j = 0; j < _FF_Q_arr.at(FFid).Q_fanout_pos.size(); j++)
+                    {
+                        double Q_dia_len = fabs(_FF_Q_arr.at(FFid).Qx_pos - _FF_Q_arr.at(FFid).Q_fanout_pos.at(j).first) + fabs(_FF_Q_arr.at(FFid).Qy_pos - _FF_Q_arr.at(FFid).Q_fanout_pos.at(j).second) + getSlack2ConnectedFF(FFid + _FF_Q_OFFSET).at(j) / (_ptr_Parser->_displaceDelay);
+                        coor_w_se Qx_s, Qx_e;
+                        Qx_s.pos_val = Qx_pos_r - (2 * Q_dia_len);
+                        Qx_s.type = 0;
+                        Qx_s.or_ind = j + 1;
+                        Qx_e.pos_val = Qx_pos_r + (2 * Q_dia_len);
+                        Qx_e.type = 1;
+                        Qx_e.or_ind = j + 1;
 
-                    dia_x_arr.push_back(Qx_s);
-                    dia_x_arr.push_back(Qx_e);
+                        dia_x_arr.push_back(Qx_s);
+                        dia_x_arr.push_back(Qx_e);
 
-                    coor_w_se Qy_s, Qy_e;
-                    Qy_s.pos_val = Qy_pos_r - (2 * Q_dia_len);
-                    Qy_s.type = 0;
-                    Qy_s.or_ind = j + 1;
-                    Qy_e.pos_val = Qy_pos_r + (2 * Q_dia_len);
-                    Qy_e.type = 1;
-                    Qy_e.or_ind = j + 1;
+                        coor_w_se Qy_s, Qy_e;
+                        Qy_s.pos_val = Qy_pos_r - (2 * Q_dia_len);
+                        Qy_s.type = 0;
+                        Qy_s.or_ind = j + 1;
+                        Qy_e.pos_val = Qy_pos_r + (2 * Q_dia_len);
+                        Qy_e.type = 1;
+                        Qy_e.or_ind = j + 1;
 
-                    dia_y_arr.push_back(Qy_s);
-                    dia_y_arr.push_back(Qy_e);
+                        dia_y_arr.push_back(Qy_s);
+                        dia_y_arr.push_back(Qy_e);
+                    }
                 }
 
                 // draw feasible by using dia_x_arr, dia_y_arr
