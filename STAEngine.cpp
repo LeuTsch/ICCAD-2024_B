@@ -199,10 +199,10 @@ void Solver::STAEngine::propagateForward(list<size_t> InPinIdList, const size_t 
                 {
                     continue;
                 }
-                for (const auto &DisPair : _distanceList[posNext].second)
+                for (const auto &DisPair : _distanceList.at(posNext).second)
                 {
                     pair<size_t, double> testPair(DisPair.first, -1);
-                    std::pair<std::map<size_t, double>::iterator, bool> result = _distanceList[posBase].second.insert(testPair);
+                    std::pair<std::map<size_t, double>::iterator, bool> result = _distanceList.at(posBase).second.insert(testPair);
                     if (!result.second) // if this path already explored (fail due to the pin has exist)
                     {
                         // and new path is longer than former one, replace it
@@ -253,7 +253,7 @@ void Solver::STAEngine::propagateForward(list<size_t> InPinIdList, const size_t 
                         continue;
                     }
                     pair<size_t, double> testPair(outID, -1);
-                    std::pair<std::map<size_t, double>::iterator, bool> result = _distanceList[posBase].second.insert(testPair);
+                    std::pair<std::map<size_t, double>::iterator, bool> result = _distanceList.at(posBase).second.insert(testPair);
                     if (!result.second) // if this path already explored
                     {
                         // and new path is longer than former one, replace it
@@ -274,13 +274,16 @@ void Solver::STAEngine::propagateForward(list<size_t> InPinIdList, const size_t 
         }
 
         // step2: recurrsively explore the in pin connect to this out pin
-        vector<size_t> nextInPin = _InPinList[getRelatedNet(outID)];
-        for (const auto &ID_next : nextInPin)
+        if (getRelatedNet(outID) != size_t(-1)) // check whether the out pin does connect to other
         {
-            pair<double, double> outPos = getPinPosition(outID);
-            pair<double, double> inPos = getPinPosition(ID_next);
-            double dis = std::fabs(outPos.first - inPos.first) + std::fabs(outPos.second - inPos.second);
-            propagateForward(InPinIdList, ID_next, d + dis, disList);
+            vector<size_t> nextInPin = _InPinList.at(getRelatedNet(outID));
+            for (const auto &ID_next : nextInPin)
+            {
+                pair<double, double> outPos = getPinPosition(outID);
+                pair<double, double> inPos = getPinPosition(ID_next);
+                double dis = std::fabs(outPos.first - inPos.first) + std::fabs(outPos.second - inPos.second);
+                propagateForward(InPinIdList, ID_next, d + dis, disList);
+            }
         }
     }
     //  step3: mark the input pin of gate to be explored
