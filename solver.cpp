@@ -1830,14 +1830,17 @@ void Solver::Solver::findMaxSlack()
         if (numOfConnectedFF == 0) // for the case _FF_D is directly connect to PI
         {
             double distance = 0;
-            for (const auto &pinID : _NetList[_FF_D_arr[i].getRelatedNet()[0]])
+            if (_FF_D_arr[i].getRelatedNet().size() != 0)
             {
-                if (_ID_to_instance[pinID]->getType() == Inst::INST_PIO)
+                for (const auto &pinID : _NetList[_FF_D_arr[i].getRelatedNet()[0]])
                 {
-                    pair<double, double> PIPos = findPinPosition(pinID);
-                    pair<double, double> FFPos = _FF_D_arr[i].getPosition();
-                    distance += (std::fabs(PIPos.first - FFPos.first) + std::fabs(PIPos.second - FFPos.second));
-                    break;
+                    if (_ID_to_instance[pinID]->getType() == Inst::INST_PIO)
+                    {
+                        pair<double, double> PIPos = findPinPosition(pinID);
+                        pair<double, double> FFPos = _FF_D_arr[i].getPosition();
+                        distance += (std::fabs(PIPos.first - FFPos.first) + std::fabs(PIPos.second - FFPos.second));
+                        break;
+                    }
                 }
             }
             _FF_D_arr[i].maxSlack = (distance / _ptr_Parser->_displaceDelay) + _FF_D_arr[i].getOriSlack();
