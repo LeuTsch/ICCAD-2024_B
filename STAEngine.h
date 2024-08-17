@@ -22,15 +22,18 @@ namespace Solver
     class STAEngine
     {
     public:
-        STAEngine() : _ptrSolver(nullptr){};
+        STAEngine() : _ptrSolver(nullptr) {};
         double getDistance(const size_t &, const size_t &);                            // we would expect the first ID is gate's in, the other is ID of out
         void initEngine(const vector<vector<size_t>> &, const vector<Inst::Inst *> &); // the input should be a set of Net and an ID to pin mapping
 
         void setSolverPtr(Solver *ptr) { _ptrSolver = ptr; }; // change to the class you may need for auxilury data
 
+        ////// should not be modified //////
+        vector<pair<size_t, std::map<size_t, double>>> _distanceList;
+        ///////////////////////////////////
+
     private:
         // data part
-        vector<pair<size_t, std::map<size_t, double>>> _distanceList;
         vector<vector<size_t>> _InPinList;        // record the In Pin in the i-th Net
         vector<vector<size_t>> _OutPinList;       // record the Out Pin in the i-th Net
         std::map<size_t, int> _InPin2PositionMap; // record the in pin ID to the position in _distanceList

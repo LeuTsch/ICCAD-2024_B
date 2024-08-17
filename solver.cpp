@@ -223,16 +223,11 @@ void Solver::Solver::initSolver()
         }
     }
 
-    // step3: establish the fanin and fanout cone for the FF
-    std::cout << "step3: establish the fanin and fanout cone for the FF" << std::endl;
-    for (size_t ffd_id = _FF_D_OFFSET; ffd_id < _FF_D_arr.size(); ffd_id++)
-    {
-        findFanin(ffd_id);
-    }
-    for (size_t ffq_id = _FF_Q_OFFSET; ffq_id < _FF_Q_arr.size(); ffq_id++)
-    {
-        findFanout(ffq_id);
-    }
+    // step3: initialize the STA engine
+    std::cout << "step3: initialize the STA engine" << std::endl;
+    assert(_ptr_STAEngine != nullptr);
+    _ptr_STAEngine->setSolverPtr(this);
+    _ptr_STAEngine->initEngine(_NetList, _ID_to_instance);
 
     // step4: update the slack for the pin, and distribute slack
     std::cout << "step4: update the slack for the pin, and distribute slack" << std::endl;
@@ -322,11 +317,9 @@ void Solver::Solver::initSolver()
         }
     }
 
-    // step7: initialize the STA engine
-    std::cout << "step7: initialize the STA engine" << std::endl;
-    assert(_ptr_STAEngine != nullptr);
-    _ptr_STAEngine->setSolverPtr(this);
-    _ptr_STAEngine->initEngine(_NetList, _ID_to_instance);
+    // step7: establish the fanin and fanout cone for the FF
+    std::cout << "step7: establish the fanin and fanout cone for the FF" << std::endl;
+    findFaninout4all(_ptr_STAEngine->_distanceList);
 
     // step8: initialize the legalizer
     std::cout << "step8: initialize the legalizer" << std::endl;
@@ -1574,196 +1567,6 @@ void Solver::Solver::slackDistribute(const double k)
     }
 }
 
-void Solver::Solver::findFanin(const FF_D_ID &id)
-{
-    /*
-    TODO: run DFS to search the fanin ff for this ff
-    */
-    assert(_ID_to_instance[id]->getType() == Inst::InstType::INST_FF_D);
-    vector<size_t> relateNet = _ID_to_instance[id]->getRelatedNet();
-    for (const auto &NetID : relateNet)
-    {
-        for (const auto &pinID : _NetList[NetID])
-        {
-            if (pinID == id)
-            {
-                continue;
-            }
-            else if (_ID_to_instance[pinID]->getType() == Inst::InstType::INST_FF_Q)
-            {
-                _FF_D_arr[id - _FF_D_OFFSET].faninCone.push_back(pinID);
-                _FF_D_arr[id - _FF_D_OFFSET].inGate2Fanin.push_back(_ID_to_instance.size());
-                _FF_D_arr[id - _FF_D_OFFSET].outGate2Fanin.push_back(_ID_to_instance.size());
-            }
-            else if (_ID_to_instance[pinID]->getType() == Inst::InstType::INST_GATE)
-            {
-                Inst::Gate *ptr_gate = _GID_to_ptrGate_map[pinID - _GATE_OFFSET];
-                if (ptr_gate->pinName[pinID - ptr_gate->PIN_OFFSET].find("OUT") != std::string::npos || ptr_gate->pinName[pinID - ptr_gate->PIN_OFFSET].find("out") != std::string::npos)
-                {
-                    findFaninRecur(id, pinID, pinID);
-                }
-            }
-        }
-    }
-}
-
-void Solver::Solver::findFaninRecur(const FF_D_ID &ID_ffd, const Gate_ID &gateID, const Gate_ID &baseGID)
-{
-    Inst::Gate *ptr_gate = _GID_to_ptrGate_map[gateID - _GATE_OFFSET];
-    vector<size_t> inputPinID;
-    inputPinID.reserve(ptr_gate->pinName.size());
-    for (size_t i = 0; i < ptr_gate->pinName.size(); i++)
-    {
-        if (ptr_gate->pinName[i].find("IN") != std::string::npos || ptr_gate->pinName[i].find("in") != std::string::npos)
-        {
-            inputPinID.push_back(i + ptr_gate->PIN_OFFSET);
-        }
-    }
-    for (const auto &NetID : ptr_gate->getRelatedNet())
-    {
-        bool isInputNet = false;
-        size_t inpin;
-        for (const auto &pinID : _NetList[NetID])
-        {
-            // check whether _NetList[NetID] is outputPin's Net
-            for (const auto &inPinID : inputPinID)
-            {
-                if (inPinID == pinID)
-                {
-                    isInputNet = true;
-                    inpin = pinID;
-                    break;
-                }
-            }
-            // if is outputNet ignore it
-            if (isInputNet)
-            {
-                break;
-            }
-        }
-        if (!isInputNet)
-        {
-            continue;
-        }
-        else
-        {
-            for (const auto &pinID : _NetList[NetID])
-            {
-                if ((pinID >= ptr_gate->PIN_OFFSET) && (pinID < (ptr_gate->PIN_OFFSET + ptr_gate->pinName.size())))
-                {
-                    // if pinID is the input of the gate
-                    continue;
-                }
-                if (_ID_to_instance[pinID]->getType() == Inst::InstType::INST_FF_Q)
-                {
-                    _FF_D_arr[ID_ffd - _FF_D_OFFSET].faninCone.push_back(pinID);
-                    _FF_D_arr[ID_ffd - _FF_D_OFFSET].inGate2Fanin.push_back(inpin);
-                    _FF_D_arr[ID_ffd - _FF_D_OFFSET].outGate2Fanin.push_back(baseGID);
-                }
-                else if (_ID_to_instance[pinID]->getType() == Inst::InstType::INST_GATE)
-                {
-                    Inst::Gate *ptr = _GID_to_ptrGate_map[pinID - _GATE_OFFSET];
-                    if (ptr->pinName[pinID - ptr->PIN_OFFSET].find("OUT") != std::string::npos || ptr->pinName[pinID - ptr->PIN_OFFSET].find("out") != std::string::npos)
-                    {
-                        findFaninRecur(ID_ffd, pinID, baseGID);
-                    }
-                }
-            }
-        }
-    }
-}
-
-void Solver::Solver::findFanout(const FF_Q_ID &id)
-{
-    /*
-    TODO: run DFS to search the fanout ff for this ff
-    */
-    assert(_ID_to_instance[id]->getType() == Inst::InstType::INST_FF_Q);
-    vector<size_t> relateNet = _ID_to_instance[id]->getRelatedNet();
-    for (const auto &NetID : relateNet)
-    {
-        for (const auto &pinID : _NetList[NetID])
-        {
-            if (pinID == id)
-            {
-                continue;
-            }
-            else if (_ID_to_instance[pinID]->getType() == Inst::InstType::INST_FF_D)
-            {
-                _FF_Q_arr[id - _FF_Q_OFFSET].fanoutCone.push_back(pinID);
-                _FF_Q_arr[id - _FF_Q_OFFSET].inGate2Fanout.push_back(_ID_to_instance.size());
-                _FF_Q_arr[id - _FF_Q_OFFSET].outGate2Fanout.push_back(_ID_to_instance.size());
-            }
-            else if (_ID_to_instance[pinID]->getType() == Inst::InstType::INST_GATE)
-            {
-                findFanoutRecur(id, pinID, pinID);
-            }
-        }
-    }
-}
-
-void Solver::Solver::findFanoutRecur(const FF_Q_ID &ID_ffq, const Gate_ID &gateID, const Gate_ID &baseGID)
-{
-    Inst::Gate *ptr_gate = _GID_to_ptrGate_map[gateID - _GATE_OFFSET];
-    vector<size_t> outputPinID;
-    outputPinID.reserve(ptr_gate->pinName.size());
-    for (size_t i = 0; i < ptr_gate->pinName.size(); i++)
-    {
-        if (ptr_gate->pinName[i].find("IN") == std::string::npos || ptr_gate->pinName[i].find("in") == std::string::npos)
-        {
-            outputPinID.push_back(i + ptr_gate->PIN_OFFSET);
-        }
-    }
-    for (const auto &NetID : ptr_gate->getRelatedNet())
-    {
-        bool isOutputNet = false;
-        size_t outpin;
-        for (const auto &pinID : _NetList[NetID])
-        {
-            // check whether _NetList[NetID] is outputPin's Net
-            for (const auto &outPinID : outputPinID)
-            {
-                if (outPinID == pinID)
-                {
-                    isOutputNet = true;
-                    outpin = pinID;
-                    break;
-                }
-            }
-            // if is outputNet start to search the net
-            if (isOutputNet)
-            {
-                break;
-            }
-        }
-        if (!isOutputNet)
-        {
-            continue;
-        }
-        else
-        {
-            for (const auto &pinID : _NetList[NetID])
-            {
-                if ((pinID >= ptr_gate->PIN_OFFSET) && (pinID < (ptr_gate->PIN_OFFSET + ptr_gate->pinName.size())))
-                {
-                    // if pinID is the pin of the gate
-                    continue;
-                }
-                if (_ID_to_instance[pinID]->getType() == Inst::InstType::INST_FF_D)
-                {
-                    _FF_Q_arr[ID_ffq - _FF_Q_OFFSET].fanoutCone.push_back(pinID);
-                    _FF_Q_arr[ID_ffq - _FF_Q_OFFSET].inGate2Fanout.push_back(baseGID);
-                    _FF_Q_arr[ID_ffq - _FF_Q_OFFSET].outGate2Fanout.push_back(outpin);
-                }
-                else if (_ID_to_instance[pinID]->getType() == Inst::InstType::INST_GATE)
-                {
-                    findFaninRecur(ID_ffq, pinID, baseGID);
-                }
-            }
-        }
-    }
-}
-
 pair<double, double> Solver::Solver::findPinPosition(const size_t &id) const
 {
     if (_ID_to_instance[id]->getType() == Inst::InstType::INST_GATE)
@@ -2039,4 +1842,238 @@ vector<double> Solver::Solver::getSlack2ConnectedFF(const size_t &id) // the inp
         }
     }
     return output;
+}
+
+void Solver::Solver::findFaninout4all(const vector<pair<size_t, std::map<size_t, double>>> &_distanceList)
+{
+    // step1: categorize which pin is critial
+    // initialize isInPinCritical isOutPinCritical
+    isInPinCritical.clear();
+    isInPinCritical.reserve(_FF_D_OFFSET);
+    isOutPinCritical.clear();
+    isOutPinCritical.reserve(_FF_D_OFFSET);
+    for (size_t i = 0; i < _FF_D_OFFSET; i++)
+    {
+
+        isOutPinCritical.push_back(false);
+        isInPinCritical.push_back(false);
+    }
+    _InPinList.reserve(_NetList.size());
+    _OutPinList.reserve(_NetList.size());
+    for (size_t i = 0; i < _NetList.size(); i++)
+    {
+        vector<size_t> initVec;
+        initVec.reserve(_NetList[i].size());
+        _InPinList.push_back(initVec);
+        _OutPinList.push_back(initVec);
+        for (const auto &id : _NetList[i])
+        {
+            if (isInPin(id))
+            {
+                _InPinList[i].push_back(id);
+            }
+            else if (isOutPin(id))
+            {
+                _OutPinList[i].push_back(id);
+            }
+        }
+    }
+    for (size_t i = 0; i < _NetList.size(); i++)
+    {
+        if (_OutPinList[i].size() > 0)
+        {
+            bool haveFF_D = false;
+            vector<size_t> ffConnect;
+            ffConnect.reserve(_NetList[i].size());
+            for (const auto &pinID : _NetList[i])
+            {
+                if (_FF_D_OFFSET <= pinID && pinID < _FF_Q_OFFSET)
+                {
+                    haveFF_D = true;
+                    ffConnect.push_back(pinID);
+                }
+            }
+            if (haveFF_D)
+            {
+                for (const auto &outID : _OutPinList[i])
+                {
+                    isOutPinCritical[outID] = true;
+                    FFConnect2CriticalPin[outID] = ffConnect;
+                }
+            }
+        }
+        else if (_OutPinList[i].size() == 0)
+        {
+            bool haveFF_Q = false;
+            vector<size_t> ffConnect;
+            ffConnect.reserve(_NetList[i].size());
+            for (const auto &pinID : _NetList[i])
+            {
+                if (_FF_Q_OFFSET <= pinID)
+                {
+                    haveFF_Q = true;
+                    ffConnect.push_back(pinID);
+                }
+            }
+            if (haveFF_Q)
+            {
+                for (const auto &inID : _InPinList[i])
+                {
+                    isInPinCritical[inID] = true;
+                    FFConnect2CriticalPin[inID] = ffConnect;
+                }
+            }
+        }
+    }
+
+    // step2: constuct inPin2Out and outPin2In
+    // initialize inPin2Out and outPin2In
+    for (size_t i = 0; i < _FF_D_OFFSET; i++)
+    {
+        if (isInPinCritical[i])
+        {
+            vector<size_t> initVec;
+            initVec.reserve(512);
+            pair<size_t, vector<size_t>> initPair(i, initVec);
+            inPin2Out.push_back(initPair);
+        }
+        else if (isOutPinCritical[i])
+        {
+            vector<size_t> initVec;
+            initVec.reserve(512);
+            pair<size_t, vector<size_t>> initPair(i, initVec);
+            outPin2In.push_back(initPair);
+        }
+    }
+    // update _OutPin2PositionMap and _InPin2PositionMap
+    for (int i = 0; i < int(inPin2Out.size()); i++)
+    {
+        _InPin2PositionMap[inPin2Out.at(i).first] = i;
+    }
+    for (int i = 0; i < int(outPin2In.size()); i++)
+    {
+        _OutPin2PositionMap[outPin2In.at(i).first] = i;
+    }
+    // constuct constuct inPin2Out and outPin2In
+    for (const auto &p : _distanceList)
+    {
+        if (isInPinCritical.at(p.first))
+        {
+            for (const auto &outlist : p.second)
+            {
+                inPin2Out.at(_InPin2PositionMap.at(p.first)).second.push_back(outlist.first);
+                outPin2In.at(_OutPin2PositionMap.at(outlist.first)).second.push_back(p.first);
+            }
+        }
+    }
+
+    // step3: use the table to find fanin and fanout cone for FF_D and FF_Q
+    for (size_t i = 0; i < _FF_D_arr.size(); i++)
+    {
+        for (const auto &netID : _FF_D_arr[i].getRelatedNet())
+        {
+            bool hasOutPin = false;
+            bool hasFF_Q = false;
+            for (const auto &pinID : _NetList[netID])
+            {
+                if (isOutPin(pinID))
+                {
+                    hasOutPin = true;
+                    for (const auto &inPinID : outPin2In.at(_OutPin2PositionMap.at(pinID)).second)
+                    {
+                        for (const auto &ffConnectID : FFConnect2CriticalPin.at(inPinID))
+                        {
+                            _FF_D_arr[i].faninCone.push_back(ffConnectID);
+                            _FF_D_arr[i].inGate2Fanin.push_back(inPinID);
+                            _FF_D_arr[i].outGate2Fanin.push_back(pinID);
+                        }
+                    }
+                    break;
+                }
+                else if (pinID >= _FF_Q_OFFSET)
+                {
+                    hasFF_Q = true;
+                    _FF_D_arr[i].faninCone.push_back(pinID);
+                    _FF_D_arr[i].inGate2Fanin.push_back(_ID_to_instance.size());
+                    _FF_D_arr[i].outGate2Fanin.push_back(_ID_to_instance.size());
+                    break;
+                }
+            }
+        }
+    }
+    for (size_t i = 0; i < _FF_Q_arr.size(); i++)
+    {
+        vector<bool> isChecked(_ID_to_instance.size(), false);
+        for (const auto &netID : _FF_Q_arr[i].getRelatedNet())
+        {
+            for (const auto &pinID : _NetList[netID])
+            {
+                if (isInPin(pinID))
+                {
+                    for (const auto &outPinID : inPin2Out.at(_InPin2PositionMap.at(pinID)).second)
+                    {
+                        for (const auto &ffConnectID : FFConnect2CriticalPin.at(outPinID))
+                        {
+                            if (!isChecked.at(ffConnectID))
+                            {
+                                _FF_Q_arr[i].fanoutCone.push_back(ffConnectID);
+                                _FF_Q_arr[i].inGate2Fanout.push_back(pinID);
+                                _FF_Q_arr[i].outGate2Fanout.push_back(outPinID);
+                                isChecked.at(ffConnectID) = true;
+                            }
+                        }
+                    }
+                }
+                else if (pinID >= _FF_D_OFFSET && pinID < _FF_Q_OFFSET)
+                {
+                    _FF_Q_arr[i].fanoutCone.push_back(pinID);
+                    _FF_Q_arr[i].inGate2Fanout.push_back(_ID_to_instance.size());
+                    _FF_Q_arr[i].outGate2Fanout.push_back(_ID_to_instance.size());
+                }
+            }
+        }
+    }
+
+    // step4: release the memory
+    inPin2Out.clear();
+    inPin2Out.shrink_to_fit();
+    outPin2In.clear();
+    outPin2In.shrink_to_fit();
+    isInPinCritical.clear();
+    isInPinCritical.shrink_to_fit();
+    isOutPinCritical.clear();
+    isOutPinCritical.shrink_to_fit();
+    FFConnect2CriticalPin.clear();
+    _OutPin2PositionMap.clear();
+    _InPin2PositionMap.clear();
+    _InPinList.clear();
+    _InPinList.shrink_to_fit();
+    _OutPinList.clear();
+    _OutPinList.shrink_to_fit();
+}
+
+bool Solver::Solver::isInPin(const size_t &id) const
+{
+    if (_ID_to_instance[id]->getType() == Inst::INST_GATE)
+    {
+        Inst::Gate *ptrGate = _GID_to_ptrGate_map[id - _GATE_OFFSET];
+        if (ptrGate->pinName[id - ptrGate->PIN_OFFSET].find("IN") != std::string::npos || ptrGate->pinName[id - ptrGate->PIN_OFFSET].find("in") != std::string::npos)
+        {
+            return true;
+        }
+    }
+    return false;
+}
+
+bool Solver::Solver::isOutPin(const size_t &id) const
+{
+    if (_ID_to_instance[id]->getType() == Inst::INST_GATE)
+    {
+        Inst::Gate *ptrGate = _GID_to_ptrGate_map[id - _GATE_OFFSET];
+        if (ptrGate->pinName[id - ptrGate->PIN_OFFSET].find("OUT") != std::string::npos || ptrGate->pinName[id - ptrGate->PIN_OFFSET].find("out") != std::string::npos)
+        {
+            return true;
+        }
+    }
+    return false;
 }

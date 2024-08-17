@@ -113,10 +113,18 @@ namespace Solver
         vector<size_t> getGroupMem(Inst::FF_D *) const; // return the index in FF_D_arr related to this ff
 
         // the function should only be called in initialization
-        void findFanin(const FF_D_ID &);
-        void findFaninRecur(const FF_D_ID &, const Gate_ID &, const Gate_ID &);
-        void findFanout(const FF_Q_ID &);
-        void findFanoutRecur(const FF_Q_ID &, const Gate_ID &, const Gate_ID &);
+        void findFaninout4all(const vector<pair<size_t, std::map<size_t, double>>> &);
+        vector<pair<size_t, vector<size_t>>> inPin2Out;
+        vector<pair<size_t, vector<size_t>>> outPin2In;
+        vector<bool> isInPinCritical;
+        vector<bool> isOutPinCritical;
+        std::map<size_t, vector<size_t>> FFConnect2CriticalPin;
+        std::map<size_t, int> _OutPin2PositionMap; // record the in pin ID to the position in outPin2In
+        std::map<size_t, int> _InPin2PositionMap;  // record the in pin ID to the position in inPin2Out
+        bool isInPin(const size_t &) const;        // see whether it is an input pin of gate
+        bool isOutPin(const size_t &) const;       // see whether it is an output pin of gate
+        vector<vector<size_t>> _InPinList;         // record the In Pin in the i-th Net
+        vector<vector<size_t>> _OutPinList;        // record the Out Pin in the i-th Net
     };
 }
 #endif
