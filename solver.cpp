@@ -897,7 +897,7 @@ void Solver::Solver::feasible_cal(const vector<size_t> &final_group)
         for (size_t kk = 0; kk < ptr_FF_Q->fanoutCone.size(); kk++)
         {
             size_t FFid = ptr_FF_Q->fanoutCone[kk] - _FF_D_OFFSET;
-            std::cout << "FFID: " << FFid << std::endl;
+            // std::cout << "FFID: " << FFid << std::endl;
 
             if (_FF_D_arr[FFid].grouped == false) // if the slack release to the grouped FF, what should i do ?
             {
@@ -1311,11 +1311,14 @@ void Solver::Solver::test()
 
 vector<size_t> Solver::Solver::prePlace(const vector<size_t> &ff_group, size_t essential_ID, pair<double, double> pos)
 {
+    std::cout << "start preplace" << std::endl;
     // return the id get grouped
     vector<size_t> ID_group;
     ID_group.reserve(ff_group.size());
+    assert(essential_ID >= _FF_D_OFFSET);
     ID_group.push_back(essential_ID);
 
+    std::cout << "step1: choose the ff size from ff lib" << std::endl;
     // step1: choose the ff size from ff lib
     int maxSize = 0;
     size_t fftype = 0;
@@ -1336,23 +1339,31 @@ vector<size_t> Solver::Solver::prePlace(const vector<size_t> &ff_group, size_t e
         }
     }
 
+    std::cout << "step2: choose which ff be grouped" << std::endl;
     // step2: choose which ff be grouped
     // here we randomly choose other maxsize - 1 ff to be group
-    for (size_t i = 0; int(i) < maxSize - 1;)
+    for (size_t i = 0; i < ff_group.size(); i++)
     {
-        if (ff_group[i] != essential_ID)
+        assert(ff_group[i] >= _FF_D_OFFSET);
+        if (ff_group.at(i) != essential_ID)
         {
             ID_group.push_back(ff_group[i]);
-            i++;
+            std::cout << "ff_group[i] = " << ff_group[i] << std::endl;
+        }
+        if (int(ID_group.size()) == maxSize)
+        {
+            break;
         }
     }
 
+    std::cout << "step3: place it and release slack" << std::endl;
     // step3: place it and release slack
     pair<double, double> center(0, 0);
     vector<pair<size_t, double>> DpinHeight;
     vector<pair<size_t, double>> ID2HeightMap;
     ID2HeightMap.reserve(maxSize);
     DpinHeight.reserve(maxSize);
+    std::cout << "A" << std::endl;
     // calculate the center of pin
     for (size_t i = 0; i < _ptr_Parser->_flipflopLib[fftype].PinCrdnate.size(); i++)
     {
@@ -1370,41 +1381,52 @@ vector<size_t> Solver::Solver::prePlace(const vector<size_t> &ff_group, size_t e
         center.first += _ptr_Parser->_flipflopLib[fftype].PinCrdnate[i].first / (2 * maxSize);
         center.second += _ptr_Parser->_flipflopLib[fftype].PinCrdnate[i].second / (2 * maxSize);
     }
+    std::cout << "AA" << std::endl;
     // initialize ID2HeightMap
     for (size_t i = 0; int(i) < maxSize; i++)
     {
         pair<size_t, double> id2yMap;
         id2yMap.first = ID_group[i];
+        std::cout << "ID_group[i] = " << ID_group[i] << std::endl;
         id2yMap.second = findPinPosition(ID_group[i]).second;
         ID2HeightMap.push_back(id2yMap);
     }
+    std::cout << "AAA" << std::endl;
     // sort the grouped ffs and D pins with their y pos
-    std::sort(ID2HeightMap.begin(), ID2HeightMap.end(), [](pair<size_t, double> a, pair<size_t, double> b)
+    std::sort(ID2HeightMap.begin(), ID2HeightMap.end(), [](pair<size_t, double> &a, pair<size_t, double> &b)
               {
                   return a.second < b.second; // sort in acsending order
               });
-    std::sort(DpinHeight.begin(), DpinHeight.end(), [](pair<size_t, double> a, pair<size_t, double> b)
+    std::sort(DpinHeight.begin(), DpinHeight.end(), [](pair<size_t, double> &a, pair<size_t, double> &b)
               {
                   return a.second < b.second; // sort in acsending order
               });
     // assign the position to each pin according to their order of height
     // FFName = instanceName of the first pin/
+    std::cout << "AAAA" << std::endl;
     string FFName = _ID_to_instance[ID2HeightMap[0].first]->getName().substr(0, _ID_to_instance[ID2HeightMap[0].first]->getName().find('/') + 1);
     for (size_t i = 0; int(i) < maxSize; i++)
     {
+        std::cout << "B" << std::endl;
+        std::cout << "ID2HeightMap[i].first = " << ID2HeightMap[i].first << std::endl;
         size_t FFid = ID2HeightMap[i].first;
         size_t pinID = DpinHeight[i].first;
-        Inst::FF_D *ptr_FF_D = &_FF_D_arr[FFid - _FF_D_OFFSET];
+        std::cout << "FFid = " << FFid << " " << _FF_D_OFFSET << std::endl;
+        Inst::FF_D *ptr_FF_D = &_FF_D_arr.at(FFid - _FF_D_OFFSET);
         string pinName = _ptr_Parser->_flipflopLib[fftype].PinName[pinID];
         pair<double, double> Pin2CenterDis = _ptr_Parser->_flipflopLib[fftype].PinCrdnate[pinID];
         Pin2CenterDis.first -= center.first;
         Pin2CenterDis.second -= center.second;
+        std::cout << "BB" << std::endl;
         // set the information for FF_D
         ptr_FF_D->setName(FFName + pinName);
+        std::cout << "G" << std::endl;
         ptr_FF_D->setPosition(pos.first + Pin2CenterDis.first, pos.second + Pin2CenterDis.second);
+        std::cout << "GG" << std::endl;
         ptr_FF_D->grouped_member = ID_group;
         ptr_FF_D->grouped = true;
         ptr_FF_D->FF_type = fftype;
+        std::cout << "BBB" << std::endl;
         // set the information for FF_Q
         Inst::FF_Q *ptr_FF_Q = &_FF_Q_arr[FFid - _FF_D_OFFSET];
         if (pinName[0] == 'D')
@@ -1423,6 +1445,7 @@ vector<size_t> Solver::Solver::prePlace(const vector<size_t> &ff_group, size_t e
                 break;
             }
         }
+        std::cout << "BB" << std::endl;
         Pin2CenterDis = _ptr_Parser->_flipflopLib[fftype].PinCrdnate[pinID];
         Pin2CenterDis.first -= center.first;
         Pin2CenterDis.second -= center.second;
@@ -1432,6 +1455,7 @@ vector<size_t> Solver::Solver::prePlace(const vector<size_t> &ff_group, size_t e
         ptr_FF_Q->FF_type = fftype;
     }
 
+    std::cout << "step4: release slack to connected ff" << std::endl;
     // release slack to connected ff
     for (const auto &id : ID_group)
     {
@@ -1463,7 +1487,15 @@ vector<size_t> Solver::Solver::prePlace(const vector<size_t> &ff_group, size_t e
         {
             pair<double, double> OriPos = ptr_FF_Q->getOriPosition();
             pair<double, double> NowPos = ptr_FF_Q->getPosition();
-            pair<double, double> GatePinPos = findPinPosition(ptr_FF_Q->inGate2Fanout[i]);
+            pair<double, double> GatePinPos;
+            if (ptr_FF_Q->inGate2Fanout[i] != _ID_to_instance.size())
+            {
+                GatePinPos = findPinPosition(ptr_FF_Q->inGate2Fanout[i]);
+            }
+            else
+            {
+                GatePinPos = findPinPosition(ptr_FF_Q->fanoutCone[i]);
+            }
             double Oridis = std::fabs(OriPos.first - GatePinPos.first) + std::fabs(OriPos.second - GatePinPos.second);
             double Nowdis = std::fabs(NowPos.first - GatePinPos.first) + std::fabs(NowPos.second - GatePinPos.second);
             double deltaSlack = (Nowdis - Oridis) / _ptr_Parser->_displaceDelay;
@@ -1473,7 +1505,7 @@ vector<size_t> Solver::Solver::prePlace(const vector<size_t> &ff_group, size_t e
             }
         }
     }
-
+    std::cout << "end preplace" << std::endl;
     return ID_group;
 }
 
