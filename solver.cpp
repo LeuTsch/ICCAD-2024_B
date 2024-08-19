@@ -9,11 +9,13 @@
 #include <list>
 #include <fstream>
 #include <iomanip>
+#include <ctime>
 
 #include "inst.h"
 #include "solver.h"
 #include "STAEngine.h"
 #include "legalizer.h"
+#include "GlobalPlacer.h"
 
 using std::list;
 using std::pair;
@@ -391,6 +393,7 @@ void Solver::Solver::solve_initbuild()
         }
     }
 
+    /*
     for (size_t i = 0; i < _FF_Q_arr.size(); i++)
     {
         size_t Q_id = i + _FF_Q_OFFSET;
@@ -421,6 +424,7 @@ void Solver::Solver::solve_initbuild()
             }
         }
     }
+    */
 
     std::cout << "initbuild is completed" << std::endl;
 }
@@ -443,6 +447,8 @@ bool compareByPosVal_2(const Inst::feasible_coor &a, const Inst::feasible_coor &
 
 void Solver::Solver::solve_findfeasible()
 {
+    clock_t a, b;
+    a = clock();
     // draw the feasible region, (use fanin fanout pos and the DQ slack ??)
     // rotate the coor first, or draw the feasible region first ?
 
@@ -459,9 +465,13 @@ void Solver::Solver::solve_findfeasible()
         vector<coor_w_se> dia_x_arr;
         vector<coor_w_se> dia_y_arr;
 
-        if (_FF_D_arr.at(i).D_fanin_pos.first != -1 || _FF_D_arr.at(i).D_fanin_pos.second != -1) // avoid PI
+        vector<pair<size_t, double>> fo_pinID_slack_Dvec = getSlack2ConnectedFF(i + _FF_D_OFFSET);
+        if (fo_pinID_slack_Dvec.size() != 0) // avoid no fanin
         {
-            double D_dia_len = fabs(_FF_D_arr.at(i).Dx_pos - _FF_D_arr.at(i).D_fanin_pos.first) + fabs(_FF_D_arr.at(i).Dy_pos - _FF_D_arr.at(i).D_fanin_pos.second) + getSlack2ConnectedFF(i + _FF_D_OFFSET).at(0) / (_ptr_Parser->_displaceDelay);
+            _FF_D_arr.at(i).D_fanin_pos = findPinPosition(fo_pinID_slack_Dvec.at(0).first);
+            double s = fo_pinID_slack_Dvec.at(0).second;
+
+            double D_dia_len = fabs(_FF_D_arr.at(i).Dx_pos - _FF_D_arr.at(i).D_fanin_pos.first) + fabs(_FF_D_arr.at(i).Dy_pos - _FF_D_arr.at(i).D_fanin_pos.second) + s / (_ptr_Parser->_displaceDelay);
             double Dx_pos_r = _FF_D_arr.at(i).Dy_pos + _FF_D_arr.at(i).Dx_pos + 2 * dist; // x'=y+x //D shift right
             double Dy_pos_r = _FF_D_arr.at(i).Dy_pos - _FF_D_arr.at(i).Dx_pos - 2 * dist; // y'=y-x
 
@@ -491,14 +501,20 @@ void Solver::Solver::solve_findfeasible()
         }
 
         // Q part, run through all fanout.
+        vector<pair<size_t, double>> fo_pinID_slack_Qvec = getSlack2ConnectedFF(i + _FF_Q_OFFSET);
 
-        if (_FF_Q_arr.at(i).Q_fanout_pos.at(0).first != -1 || _FF_Q_arr.at(i).Q_fanout_pos.at(0).second != -1)
+        if (fo_pinID_slack_Qvec.size() != 0)
         {
             double Qx_pos_r = _FF_Q_arr.at(i).Qy_pos + _FF_Q_arr.at(i).Qx_pos - 2 * dist; // Q shift left
             double Qy_pos_r = _FF_Q_arr.at(i).Qy_pos - _FF_Q_arr.at(i).Qx_pos + 2 * dist;
-            for (size_t j = 0; j < _FF_Q_arr.at(i).Q_fanout_pos.size(); j++)
+
+            for (size_t j = 0; j < fo_pinID_slack_Qvec.size(); j++)
             {
-                double Q_dia_len = fabs(_FF_Q_arr.at(i).Qx_pos - _FF_Q_arr.at(i).Q_fanout_pos.at(j).first) + fabs(_FF_Q_arr.at(i).Qy_pos - _FF_Q_arr.at(i).Q_fanout_pos.at(j).second) + getSlack2ConnectedFF(i + _FF_Q_OFFSET).at(j) / (_ptr_Parser->_displaceDelay);
+
+                _FF_Q_arr.at(i).Q_fanout_pos.push_back(findPinPosition(fo_pinID_slack_Qvec.at(j).first));
+                double s = fo_pinID_slack_Qvec.at(j).second;
+
+                double Q_dia_len = fabs(_FF_Q_arr.at(i).Qx_pos - _FF_Q_arr.at(i).Q_fanout_pos.at(j).first) + fabs(_FF_Q_arr.at(i).Qy_pos - _FF_Q_arr.at(i).Q_fanout_pos.at(j).second) + s / (_ptr_Parser->_displaceDelay);
                 coor_w_se Qx_s, Qx_e;
                 Qx_s.pos_val = Qx_pos_r - (2 * Q_dia_len);
                 Qx_s.type = 0;
@@ -582,11 +598,13 @@ void Solver::Solver::solve_findfeasible()
         }
         if (_FF_D_arr.at(i).hasfeasible == 1)
         {
-            std::cout << _FF_D_arr.at(i).fea_x_s.pos_val << " " << _FF_D_arr.at(i).fea_x_e.pos_val << std::endl;
+            // std::cout << _FF_D_arr.at(i).fea_x_s.pos_val << " " << _FF_D_arr.at(i).fea_x_e.pos_val << std::endl;
         }
     }
 
     std::cout << "findfeasible is completed" << std::endl;
+    b = clock();
+    std::cout << "time for finding feasible: " << (b - a) / CLOCKS_PER_SEC << std::endl;
 }
 
 void Solver::Solver::solve()
@@ -594,6 +612,8 @@ void Solver::Solver::solve()
     solve_initbuild();
 
     solve_findfeasible();
+
+    // drawpic("pic_1.plt"); /////////////////////////////////////////////
 
     // clock一樣才能綁，外面掛一層迴圈跑過所有clock
     // FFD.getclock 吐 id, id == 0 ... for(int i = 0; i < _ClkList.size(); i++)
@@ -696,12 +716,20 @@ void Solver::Solver::solve()
             // std::cout << "FFID is " << feas_x_clk[0].FF_id << std::endl;
         }
         std::cout << "CLKlist " << k << " is finished" << std::endl;
+        ////////////////////////////////////////////////////////////////////////////////////////
+        if (k % (_ClkList.size() / 5) == 0)
+        {
+            string s = std::to_string(k / (_ClkList.size() / 5) + 1);
+            // drawpic("pic_" + s + ".plt");
+        }
+        ////////////////////////////////////////////////////////////////////////////////////////
     }
 
     // 決定後來的DQ 的 pos, 記得Q的正方形要往左移（或D往右, Q往左）
     // preplace完 slack release, 更新DQ正方形，重新畫table
-
+    // drawpic("pic_z.plt"); ///////////////////////////////////////////////////////////////////////
     legalize();
+    // drawpic("pic_final.plt"); ///////////////////////////////////////////////////////////////////
     std::cout << "Solver is completed !" << std::endl;
 }
 
@@ -709,6 +737,7 @@ void Solver::Solver::feasible_cal(const vector<size_t> &final_group)
 {
     // std::cout << "Hello" << std::endl;
 
+    ////faninCone
     for (size_t i = 0; i < final_group.size(); i++)
     {
         size_t id = final_group.at(i) - _FF_D_OFFSET;
@@ -725,9 +754,13 @@ void Solver::Solver::feasible_cal(const vector<size_t> &final_group)
                 vector<coor_w_se> dia_x_arr;
                 vector<coor_w_se> dia_y_arr;
 
-                if (_FF_D_arr.at(FFid).D_fanin_pos.first != -1 || _FF_D_arr.at(FFid).D_fanin_pos.second != -1) // avoid PI
+                vector<pair<size_t, double>> fo_pinID_slack_Dvec = getSlack2ConnectedFF(i + _FF_D_OFFSET);
+                if (fo_pinID_slack_Dvec.size() != 0) // avoid no fanin
                 {
-                    double D_dia_len = fabs(_FF_D_arr.at(FFid).Dx_pos - _FF_D_arr.at(FFid).D_fanin_pos.first) + fabs(_FF_D_arr.at(FFid).Dy_pos - _FF_D_arr.at(FFid).D_fanin_pos.second) + getSlack2ConnectedFF(FFid + _FF_D_OFFSET).at(0) / (_ptr_Parser->_displaceDelay);
+                    _FF_D_arr.at(FFid).D_fanin_pos = findPinPosition(fo_pinID_slack_Dvec.at(0).first);
+                    double s = fo_pinID_slack_Dvec.at(0).second;
+
+                    double D_dia_len = fabs(_FF_D_arr.at(FFid).Dx_pos - _FF_D_arr.at(FFid).D_fanin_pos.first) + fabs(_FF_D_arr.at(FFid).Dy_pos - _FF_D_arr.at(FFid).D_fanin_pos.second) + s / (_ptr_Parser->_displaceDelay);
                     double Dx_pos_r = _FF_D_arr.at(FFid).Dy_pos + _FF_D_arr.at(FFid).Dx_pos + 2 * dist; // x'=y+x //D shift right
                     double Dy_pos_r = _FF_D_arr.at(FFid).Dy_pos - _FF_D_arr.at(FFid).Dx_pos - 2 * dist; // y'=y-x
 
@@ -757,14 +790,19 @@ void Solver::Solver::feasible_cal(const vector<size_t> &final_group)
                 }
 
                 // Q part, run through all fanout.
+                vector<pair<size_t, double>> fo_pinID_slack_Qvec = getSlack2ConnectedFF(i + _FF_Q_OFFSET);
 
-                if (_FF_Q_arr.at(FFid).Q_fanout_pos.at(0).first != -1 || _FF_Q_arr.at(FFid).Q_fanout_pos.at(0).second != -1)
+                if (fo_pinID_slack_Qvec.size() != 0) // avoid PI and no fanout
                 {
                     double Qx_pos_r = _FF_Q_arr.at(FFid).Qy_pos + _FF_Q_arr.at(FFid).Qx_pos - 2 * dist; // Q shift left
                     double Qy_pos_r = _FF_Q_arr.at(FFid).Qy_pos - _FF_Q_arr.at(FFid).Qx_pos + 2 * dist;
-                    for (size_t j = 0; j < _FF_Q_arr.at(FFid).Q_fanout_pos.size(); j++)
+                    for (size_t j = 0; j < fo_pinID_slack_Qvec.size(); j++)
                     {
-                        double Q_dia_len = fabs(_FF_Q_arr.at(FFid).Qx_pos - _FF_Q_arr.at(FFid).Q_fanout_pos.at(j).first) + fabs(_FF_Q_arr.at(FFid).Qy_pos - _FF_Q_arr.at(FFid).Q_fanout_pos.at(j).second) + getSlack2ConnectedFF(FFid + _FF_Q_OFFSET).at(j) / (_ptr_Parser->_displaceDelay);
+
+                        _FF_Q_arr.at(FFid).Q_fanout_pos.push_back(findPinPosition(fo_pinID_slack_Qvec.at(j).first));
+                        double s = fo_pinID_slack_Qvec.at(j).second;
+
+                        double Q_dia_len = fabs(_FF_Q_arr.at(FFid).Qx_pos - _FF_Q_arr.at(FFid).Q_fanout_pos.at(j).first) + fabs(_FF_Q_arr.at(FFid).Qy_pos - _FF_Q_arr.at(FFid).Q_fanout_pos.at(j).second) + s / (_ptr_Parser->_displaceDelay);
                         coor_w_se Qx_s, Qx_e;
                         Qx_s.pos_val = Qx_pos_r - (2 * Q_dia_len);
                         Qx_s.type = 0;
@@ -850,6 +888,7 @@ void Solver::Solver::feasible_cal(const vector<size_t> &final_group)
         }
     }
 
+    ////fanoutCone
     for (size_t i = 0; i < final_group.size(); i++)
     {
         size_t id = final_group.at(i) - _FF_D_OFFSET;
@@ -857,7 +896,8 @@ void Solver::Solver::feasible_cal(const vector<size_t> &final_group)
 
         for (size_t kk = 0; kk < ptr_FF_Q->fanoutCone.size(); kk++)
         {
-            size_t FFid = ptr_FF_Q->fanoutCone[kk] - _FF_Q_OFFSET;
+            size_t FFid = ptr_FF_Q->fanoutCone[kk] - _FF_D_OFFSET;
+            std::cout << "FFID: " << FFid << std::endl;
 
             if (_FF_D_arr[FFid].grouped == false) // if the slack release to the grouped FF, what should i do ?
             {
@@ -866,9 +906,14 @@ void Solver::Solver::feasible_cal(const vector<size_t> &final_group)
                 vector<coor_w_se> dia_x_arr;
                 vector<coor_w_se> dia_y_arr;
 
-                if (_FF_D_arr.at(FFid).D_fanin_pos.first != -1 || _FF_D_arr.at(FFid).D_fanin_pos.second != -1) // avoid PI
+                vector<pair<size_t, double>> fo_pinID_slack_Dvec = getSlack2ConnectedFF(FFid + _FF_D_OFFSET);
+
+                if (fo_pinID_slack_Dvec.size() != 0) // avoid no fanin
                 {
-                    double D_dia_len = fabs(_FF_D_arr.at(FFid).Dx_pos - _FF_D_arr.at(FFid).D_fanin_pos.first) + fabs(_FF_D_arr.at(FFid).Dy_pos - _FF_D_arr.at(FFid).D_fanin_pos.second) + getSlack2ConnectedFF(FFid + _FF_D_OFFSET).at(0) / (_ptr_Parser->_displaceDelay);
+                    _FF_D_arr.at(FFid).D_fanin_pos = findPinPosition(fo_pinID_slack_Dvec.at(0).first);
+                    double s = fo_pinID_slack_Dvec.at(0).second;
+
+                    double D_dia_len = fabs(_FF_D_arr.at(FFid).Dx_pos - _FF_D_arr.at(FFid).D_fanin_pos.first) + fabs(_FF_D_arr.at(FFid).Dy_pos - _FF_D_arr.at(FFid).D_fanin_pos.second) + s / (_ptr_Parser->_displaceDelay);
                     double Dx_pos_r = _FF_D_arr.at(FFid).Dy_pos + _FF_D_arr.at(FFid).Dx_pos + 2 * dist; // x'=y+x //D shift right
                     double Dy_pos_r = _FF_D_arr.at(FFid).Dy_pos - _FF_D_arr.at(FFid).Dx_pos - 2 * dist; // y'=y-x
 
@@ -899,13 +944,18 @@ void Solver::Solver::feasible_cal(const vector<size_t> &final_group)
 
                 // Q part, run through all fanout.
 
-                if (_FF_Q_arr.at(FFid).Q_fanout_pos.at(0).first != -1 || _FF_Q_arr.at(FFid).Q_fanout_pos.at(0).second != -1)
+                vector<pair<size_t, double>> fo_pinID_slack_Qvec = getSlack2ConnectedFF(FFid + _FF_Q_OFFSET);
+                if (fo_pinID_slack_Qvec.size() != 0)
                 {
                     double Qx_pos_r = _FF_Q_arr.at(FFid).Qy_pos + _FF_Q_arr.at(FFid).Qx_pos - 2 * dist; // Q shift left
                     double Qy_pos_r = _FF_Q_arr.at(FFid).Qy_pos - _FF_Q_arr.at(FFid).Qx_pos + 2 * dist;
-                    for (size_t j = 0; j < _FF_Q_arr.at(FFid).Q_fanout_pos.size(); j++)
+                    for (size_t j = 0; j < fo_pinID_slack_Qvec.size(); j++)
                     {
-                        double Q_dia_len = fabs(_FF_Q_arr.at(FFid).Qx_pos - _FF_Q_arr.at(FFid).Q_fanout_pos.at(j).first) + fabs(_FF_Q_arr.at(FFid).Qy_pos - _FF_Q_arr.at(FFid).Q_fanout_pos.at(j).second) + getSlack2ConnectedFF(FFid + _FF_Q_OFFSET).at(j) / (_ptr_Parser->_displaceDelay);
+
+                        _FF_Q_arr.at(FFid).Q_fanout_pos.push_back(findPinPosition(fo_pinID_slack_Qvec.at(j).first));
+                        double s = fo_pinID_slack_Qvec.at(j).second;
+
+                        double Q_dia_len = fabs(_FF_Q_arr.at(FFid).Qx_pos - _FF_Q_arr.at(FFid).Q_fanout_pos.at(j).first) + fabs(_FF_Q_arr.at(FFid).Qy_pos - _FF_Q_arr.at(FFid).Q_fanout_pos.at(j).second) + s / (_ptr_Parser->_displaceDelay);
                         coor_w_se Qx_s, Qx_e;
                         Qx_s.pos_val = Qx_pos_r - (2 * Q_dia_len);
                         Qx_s.type = 0;
@@ -1108,20 +1158,25 @@ vector<size_t> Solver::Solver::solve_findmaximal(const vector<size_t> &ff_group,
     return result_group;
 }
 
-void Solver::Solver::solve_test()
+void Solver::Solver::drawpic(const string &s)
 {
-    solve_initbuild();
-
-    solve_findfeasible();
-
+    vector<size_t> FFIDs;
+    FFIDs.reserve(_FF_D_arr.size());
     for (size_t i = 0; i < _FF_D_arr.size(); i++)
     {
-        vector<size_t> ff_group;
-        size_t id = i + _FF_D_OFFSET;
-        ff_group.push_back(id);
-        prePlace(ff_group, id, _FF_D_arr[i].getPosition());
+        FFIDs.push_back(i);
     }
-    legalize();
+
+    vector<size_t> GateIDs;
+    FFIDs.reserve(_Gate_arr.size());
+    for (size_t i = 0; i < _Gate_arr.size(); i++)
+    {
+        GateIDs.push_back(i);
+    }
+
+    vector<size_t> NetIDs;
+
+    _ptr_GlobalPlacer->placementVisualization(s, FFIDs, GateIDs, NetIDs);
 }
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -1217,7 +1272,36 @@ void Solver::Solver::test()
 {
     // initSolver();
     // legal test
-    legalize();
+    clock_t a, b;
+    a = clock();
+    for (int i = 0; i < int(_FF_D_arr.size()); i++)
+    {
+        if (_FF_D_arr.at(i).faninCone.size() != 0)
+        {
+
+            // double slack = _FF_D_arr.at(i).slack;
+        }
+    }
+    b = clock();
+    std::cout << "Time for D getSlack: " << (b - a) << "sec" << std::endl;
+    std::cout << "CLOCKS_PER_SECOND" << CLOCKS_PER_SEC << std::endl;
+
+    clock_t c, d;
+    c = clock();
+    for (size_t i = 0; i < _FF_Q_arr.size(); i++)
+    {
+        if (_FF_Q_arr.at(i).fanoutCone.size() != 0)
+        {
+
+            for (int j = 0; j < _FF_Q_arr.at(i).fanoutCone.size(); j++)
+            {
+                // double slack = getSlack2ConnectedFF(i + _FF_Q_OFFSET).at(j);
+                double slack = _FF_Q_arr.at(i).slack;
+            }
+        }
+    }
+    d = clock();
+    std::cout << "Time for Q getSlack: " << (d - c) << "sec" << std::endl;
 
     /*// STA test
     size_t in = _Name_to_ID.at("C9/IN");
@@ -1905,7 +1989,7 @@ vector<pair<size_t, double>> Solver::Solver::getSlack2ConnectedFF(const size_t &
                 }
                 else
                 {
-                    pair<size_t, double> initPair(_FF_Q_arr[id - _FF_Q_OFFSET].fanoutCone[i - 1], minSlack);
+                    pair<size_t, double> initPair(_FF_Q_arr.at(id - _FF_Q_OFFSET).fanoutCone.at(i), minSlack);
                     output.push_back(initPair);
                 }
             }
@@ -2042,13 +2126,13 @@ void Solver::Solver::findFaninout4all(const vector<pair<size_t, std::map<size_t,
     {
         for (const auto &netID : _FF_D_arr[i].getRelatedNet())
         {
-            bool hasOutPin = false;
-            bool hasFF_Q = false;
+            // bool hasOutPin = false;
+            // bool hasFF_Q = false;
             for (const auto &pinID : _NetList[netID])
             {
                 if (isOutPin(pinID))
                 {
-                    hasOutPin = true;
+                    // hasOutPin = true;
                     for (const auto &inPinID : outPin2In.at(_OutPin2PositionMap.at(pinID)).second)
                     {
                         for (const auto &ffConnectID : FFConnect2CriticalPin.at(inPinID))
@@ -2062,7 +2146,7 @@ void Solver::Solver::findFaninout4all(const vector<pair<size_t, std::map<size_t,
                 }
                 else if (pinID >= _FF_Q_OFFSET)
                 {
-                    hasFF_Q = true;
+                    // hasFF_Q = true;
                     _FF_D_arr[i].faninCone.push_back(pinID);
                     _FF_D_arr[i].inGate2Fanin.push_back(_ID_to_instance.size());
                     _FF_D_arr[i].outGate2Fanin.push_back(_ID_to_instance.size());

@@ -29,8 +29,9 @@ namespace Solver
         double siteHight;
         double totalNumOfSites;
     };
-    class STAEngine; // forward declaration
-    class legalizer; // forward declaration
+    class STAEngine;    // forward declaration
+    class legalizer;    // forward declaration
+    class GlobalPlacer; ///////////////////////////////
 
     class Solver
     {
@@ -39,6 +40,9 @@ namespace Solver
         void setParserPtr(Parse::Parser *ptr) { _ptr_Parser = ptr; };
         void setSTAEnginePtr(STAEngine *ptr) { _ptr_STAEngine = ptr; };
         void setLegalizerPtr(legalizer *ptr) { _ptr_legalizer = ptr; };
+        ///////////////////////////////////////////////
+        void setGlobalPlacerPtr(GlobalPlacer *ptr) { _ptr_GlobalPlacer = ptr; };
+        ///////////////////////////////////////////////
         void initSolver();
         void solve();
         void printOutput(const string &);
@@ -49,10 +53,12 @@ namespace Solver
         void solve_findfeasible();
         vector<size_t> solve_findmaximal(const vector<size_t> &, size_t, pair<double, double> &, pair<double, double> &);
         void feasible_cal(const vector<size_t> &);
-        void solve_test();
+        void drawpic(const string &); ////////////////////////////
         ///////////////////////
 
         // friend class declaration
+        friend class GlobalPlacer; ////////////////////////////////////////////////
+
         friend class STAEngine;
         friend class legalizer;
 
@@ -61,6 +67,9 @@ namespace Solver
         Parse::Parser *_ptr_Parser;
         STAEngine *_ptr_STAEngine;
         legalizer *_ptr_legalizer;
+        ///////////////////////////////////////
+        GlobalPlacer *_ptr_GlobalPlacer;
+        ///////////////////////////////////////
         size_t _GATE_OFFSET;
         size_t _FF_D_OFFSET;
         size_t _FF_Q_OFFSET;
@@ -81,8 +90,8 @@ namespace Solver
 
         // function part
         vector<size_t> prePlace(const vector<FF_D_ID> &, size_t, pair<double, double>); // return the FF_D_ID be grouped
-        vector<pair<size_t, double>> getSlack2ConnectedFF(const size_t &);                            // return the slack to the connected FF, the input should be global ID of FF_D or FF_Q
-                                                                                        // if the the connected FF has grouped, return the 100% of remaining slack. Otherwise, it would be 50%
+        vector<pair<size_t, double>> getSlack2ConnectedFF(const size_t &);
+        // if the the connected FF has grouped, return the 100% of remaining slack. Otherwise, it would be 50%
         void legalize();
 
         ////////////// no need to use it more(if you would use the slack in Inst::FF_D or Inst::FF_Q)
