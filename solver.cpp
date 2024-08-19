@@ -1348,7 +1348,7 @@ vector<size_t> Solver::Solver::prePlace(const vector<size_t> &ff_group, size_t e
         if (ff_group.at(i) != essential_ID)
         {
             ID_group.push_back(ff_group[i]);
-            std::cout << "ff_group[i] = " << ff_group[i] << std::endl;
+            std::cout << "ff_group[" << i << "] = " << ff_group[i] << std::endl;
         }
         if (int(ID_group.size()) == maxSize)
         {
