@@ -1440,7 +1440,15 @@ vector<size_t> Solver::Solver::prePlace(const vector<size_t> &ff_group, size_t e
         {
             pair<double, double> OriPos = ptr_FF_D->getOriPosition();
             pair<double, double> NowPos = ptr_FF_D->getPosition();
-            pair<double, double> GatePinPos = findPinPosition(ptr_FF_D->outGate2Fanin[i]);
+            pair<double, double> GatePinPos;
+            if (ptr_FF_D->outGate2Fanin[i] != _ID_to_instance.size())
+            {
+                GatePinPos = findPinPosition(ptr_FF_D->outGate2Fanin[i]);
+            }
+            else
+            {
+                GatePinPos = findPinPosition(ptr_FF_D->faninCone[i]);
+            }
             double Oridis = std::fabs(OriPos.first - GatePinPos.first) + std::fabs(OriPos.second - GatePinPos.second);
             double Nowdis = std::fabs(NowPos.first - GatePinPos.first) + std::fabs(NowPos.second - GatePinPos.second);
             double deltaSlack = (Nowdis - Oridis) / _ptr_Parser->_displaceDelay;
