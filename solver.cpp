@@ -1694,9 +1694,9 @@ void Solver::Solver::findMaxSlack()
     }
 }
 
-vector<double> Solver::Solver::getSlack2ConnectedFF(const size_t &id) // the input should be global ID
+vector<pair<size_t, double>> Solver::Solver::getSlack2ConnectedFF(const size_t &id) // the input should be global ID
 {
-    vector<double> output;
+    vector<pair<size_t, double>> output;
     output.reserve(128);
     // If the input is FF_D, we only return one slack, which is the slack of critical path
     if (_ID_to_instance[id]->getType() == Inst::INST_FF_D)
@@ -1705,18 +1705,21 @@ vector<double> Solver::Solver::getSlack2ConnectedFF(const size_t &id) // the inp
         // case1: _FF_D is directly connect to PI
         if (numOfConnectedFF == 0) // for the case _FF_D is directly connect to PI
         {
+            pair<size_t, double> initPair;
             double distance = 0;
             for (const auto &pinID : _NetList[_ID_to_instance[id]->getRelatedNet()[0]])
             {
                 if (_ID_to_instance[pinID]->getType() == Inst::INST_PIO)
                 {
+                    initPair.first = pinID;
                     pair<double, double> PIPos = findPinPosition(pinID);
                     pair<double, double> FFPos = _ID_to_instance[id]->getPosition();
                     distance += (std::fabs(PIPos.first - FFPos.first) + std::fabs(PIPos.second - FFPos.second));
                     break;
                 }
             }
-            output.push_back(_FF_D_arr[id - _FF_D_OFFSET].maxSlack - (distance / _ptr_Parser->_displaceDelay));
+            initPair.second = _FF_D_arr[id - _FF_D_OFFSET].maxSlack - (distance / _ptr_Parser->_displaceDelay);
+            output.push_back(initPair);
             return output;
         }
 
@@ -1784,7 +1787,8 @@ vector<double> Solver::Solver::getSlack2ConnectedFF(const size_t &id) // the inp
                 }
             }
         }
-        output.push_back(slackRemain);
+        pair<size_t, double> initPair(_FF_D_arr[id - _FF_D_OFFSET].inGate2Fanin[0], slackRemain);
+        output.push_back(initPair);
         return output;
     }
     else if (_ID_to_instance[id]->getType() == Inst::INST_FF_Q)
@@ -2031,6 +2035,34 @@ void Solver::Solver::findFaninout4all(const vector<pair<size_t, std::map<size_t,
                     _FF_Q_arr[i].outGate2Fanout.push_back(_ID_to_instance.size());
                 }
             }
+        }
+
+        // sort the fanoutCone by inGate
+        vector<pair<size_t, size_t>> in2PosInFanout; // pair<ingateID, position in fanout>
+        in2PosInFanout.reserve(_FF_Q_arr[i].inGate2Fanout.size());
+        for (size_t k = 0; k < _FF_Q_arr[i].inGate2Fanout.size(); k++)
+        {
+            pair<size_t, size_t> initPair(_FF_Q_arr[i].inGate2Fanout[k], k);
+            in2PosInFanout.push_back(initPair);
+        }
+        std::sort(in2PosInFanout.begin(), in2PosInFanout.end(), [](pair<size_t, size_t>& a, pair<size_t, size_t>&b)
+                                        {
+                                            return a.first < b.first;
+                                        });
+        vector<size_t> c = _FF_Q_arr[i].fanoutCone;
+        for (size_t k = 0; k < _FF_Q_arr[i].inGate2Fanout.size(); k++)
+        {
+            _FF_Q_arr[i].fanoutCone.at(k) = c.at(in2PosInFanout.at(k).second);
+        }
+        c = _FF_Q_arr[i].inGate2Fanout;
+        for (size_t k = 0; k < _FF_Q_arr[i].inGate2Fanout.size(); k++)
+        {
+            _FF_Q_arr[i].inGate2Fanout.at(k) = c.at(in2PosInFanout.at(k).second);
+        }
+        c = _FF_Q_arr[i].outGate2Fanout;
+        for (size_t k = 0; k < _FF_Q_arr[i].inGate2Fanout.size(); k++)
+        {
+            _FF_Q_arr[i].outGate2Fanout.at(k) = c.at(in2PosInFanout.at(k).second);
         }
     }
 

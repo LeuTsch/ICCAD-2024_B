@@ -81,7 +81,7 @@ namespace Solver
 
         // function part
         vector<size_t> prePlace(const vector<FF_D_ID> &, size_t, pair<double, double>); // return the FF_D_ID be grouped
-        vector<double> getSlack2ConnectedFF(const size_t &);                            // return the slack to the connected FF, the input should be global ID of FF_D or FF_Q
+        vector<pair<size_t, double>> getSlack2ConnectedFF(const size_t &);                            // return the slack to the connected FF, the input should be global ID of FF_D or FF_Q
                                                                                         // if the the connected FF has grouped, return the 100% of remaining slack. Otherwise, it would be 50%
         void legalize();
 
