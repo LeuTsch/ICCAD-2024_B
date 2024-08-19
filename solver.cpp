@@ -1725,6 +1725,7 @@ vector<pair<size_t, double>> Solver::Solver::getSlack2ConnectedFF(const size_t &
 
         // case2: _FF_D is not directly connect to PI
         double slackRemain = _FF_D_arr[id - _FF_D_OFFSET].maxSlack;
+        bool isdirect2FF = false;
         for (size_t i = 0; i < numOfConnectedFF; i++)
         {
             double distance = 0;
@@ -1758,6 +1759,7 @@ vector<pair<size_t, double>> Solver::Solver::getSlack2ConnectedFF(const size_t &
                 if (s < slackRemain)
                 {
                     slackRemain = s;
+                    isdirect2FF = false;
                 }
             }
             else // the former FF is directly connect to FF_D
@@ -1784,18 +1786,51 @@ vector<pair<size_t, double>> Solver::Solver::getSlack2ConnectedFF(const size_t &
                 if (s < slackRemain)
                 {
                     slackRemain = s;
+                    isdirect2FF = true;
                 }
             }
         }
-        pair<size_t, double> initPair(_FF_D_arr[id - _FF_D_OFFSET].inGate2Fanin[0], slackRemain);
-        output.push_back(initPair);
+        if (!isdirect2FF)
+        {
+            pair<size_t, double> initPair(_FF_D_arr[id - _FF_D_OFFSET].inGate2Fanin[0], slackRemain);
+            output.push_back(initPair);
+        }
+        else
+        {
+            pair<size_t, double> initPair(_FF_D_arr[id - _FF_D_OFFSET].faninCone[0], slackRemain);
+            output.push_back(initPair);
+        }
         return output;
     }
     else if (_ID_to_instance[id]->getType() == Inst::INST_FF_Q)
     {
         size_t numOfConnectedFF = _FF_Q_arr[id - _FF_Q_OFFSET].fanoutCone.size();
+        size_t previousInGate;
+        double minSlack;
         for (size_t i = 0; i < numOfConnectedFF; i++)
         {
+            if (i == 0)
+            {
+                previousInGate = _FF_Q_arr[id - _FF_Q_OFFSET].inGate2Fanout[i];
+                minSlack = _FF_D_arr[_FF_Q_arr[id - _FF_Q_OFFSET].fanoutCone[i] - _FF_D_OFFSET].maxSlack;
+            }
+            // if previousInGate != next inGate add result to output
+            if (previousInGate != _FF_Q_arr[id - _FF_Q_OFFSET].inGate2Fanout[i])
+            {
+                if (previousInGate != _ID_to_instance.size())
+                {
+                    pair<size_t, double> initPair(previousInGate, minSlack);
+                    output.push_back(initPair);
+                }
+                else
+                {
+                    pair<size_t, double> initPair(_FF_Q_arr[id - _FF_Q_OFFSET].fanoutCone[i - 1], minSlack);
+                    output.push_back(initPair);
+                }
+                previousInGate = _FF_Q_arr[id - _FF_Q_OFFSET].inGate2Fanout[i];
+                minSlack = _FF_D_arr[_FF_Q_arr[id - _FF_Q_OFFSET].fanoutCone[i] - _FF_D_OFFSET].maxSlack;
+            }
+
             double distance = 0;
             if (_FF_Q_arr[id - _FF_Q_OFFSET].inGate2Fanout[i] != _ID_to_instance.size()) // if the later FF is not directly connect to FF_Q
             {
@@ -1815,12 +1850,20 @@ vector<pair<size_t, double>> Solver::Solver::getSlack2ConnectedFF(const size_t &
                 if (_FF_D_arr[_FF_Q_arr[id - _FF_Q_OFFSET].fanoutCone[i] - _FF_D_OFFSET].grouped)
                 {
                     // if is grouped give all slack to FF_D
-                    output.push_back(_FF_D_arr[_FF_Q_arr[id - _FF_Q_OFFSET].fanoutCone[i] - _FF_D_OFFSET].maxSlack - (distance / _ptr_Parser->_displaceDelay));
+                    double s = _FF_D_arr[_FF_Q_arr[id - _FF_Q_OFFSET].fanoutCone[i] - _FF_D_OFFSET].maxSlack - (distance / _ptr_Parser->_displaceDelay);
+                    if (s < minSlack)
+                    {
+                        minSlack = s;
+                    }
                 }
                 else
                 {
                     // if is not grouped give half slack to FF_D
-                    output.push_back((_FF_D_arr[_FF_Q_arr[id - _FF_Q_OFFSET].fanoutCone[i] - _FF_D_OFFSET].maxSlack - (distance / _ptr_Parser->_displaceDelay)) / 2);
+                    double s = (_FF_D_arr[_FF_Q_arr[id - _FF_Q_OFFSET].fanoutCone[i] - _FF_D_OFFSET].maxSlack - (distance / _ptr_Parser->_displaceDelay)) / 2;
+                    if (s < minSlack)
+                    {
+                        minSlack = s;
+                    }
                 }
             }
             else // the later FF is directly connect to FF_D
@@ -1835,12 +1878,35 @@ vector<pair<size_t, double>> Solver::Solver::getSlack2ConnectedFF(const size_t &
                 if (_FF_D_arr[_FF_Q_arr[id - _FF_Q_OFFSET].fanoutCone[i] - _FF_D_OFFSET].grouped)
                 {
                     // if is grouped give all slack to FF_D
-                    output.push_back(_FF_D_arr[_FF_Q_arr[id - _FF_Q_OFFSET].fanoutCone[i] - _FF_D_OFFSET].maxSlack - (distance / _ptr_Parser->_displaceDelay));
+                    double s = (_FF_D_arr[_FF_Q_arr[id - _FF_Q_OFFSET].fanoutCone[i] - _FF_D_OFFSET].maxSlack - (distance / _ptr_Parser->_displaceDelay));
+                    if (s < minSlack)
+                    {
+                        minSlack = s;
+                    }
                 }
                 else
                 {
                     // if is not grouped give half slack to FF_D
-                    output.push_back((_FF_D_arr[_FF_Q_arr[id - _FF_Q_OFFSET].fanoutCone[i] - _FF_D_OFFSET].maxSlack - (distance / _ptr_Parser->_displaceDelay)) / 2);
+                    double s = ((_FF_D_arr[_FF_Q_arr[id - _FF_Q_OFFSET].fanoutCone[i] - _FF_D_OFFSET].maxSlack - (distance / _ptr_Parser->_displaceDelay)) / 2);
+                    if (s < minSlack)
+                    {
+                        minSlack = s;
+                    }
+                }
+            }
+
+            // if i == numOfConnectedFF - 1, record to output
+            if (i == numOfConnectedFF - 1)
+            {
+                if (previousInGate != _ID_to_instance.size())
+                {
+                    pair<size_t, double> initPair(previousInGate, minSlack);
+                    output.push_back(initPair);
+                }
+                else
+                {
+                    pair<size_t, double> initPair(_FF_Q_arr[id - _FF_Q_OFFSET].fanoutCone[i - 1], minSlack);
+                    output.push_back(initPair);
                 }
             }
         }
@@ -2045,10 +2111,8 @@ void Solver::Solver::findFaninout4all(const vector<pair<size_t, std::map<size_t,
             pair<size_t, size_t> initPair(_FF_Q_arr[i].inGate2Fanout[k], k);
             in2PosInFanout.push_back(initPair);
         }
-        std::sort(in2PosInFanout.begin(), in2PosInFanout.end(), [](pair<size_t, size_t>& a, pair<size_t, size_t>&b)
-                                        {
-                                            return a.first < b.first;
-                                        });
+        std::sort(in2PosInFanout.begin(), in2PosInFanout.end(), [](pair<size_t, size_t> &a, pair<size_t, size_t> &b)
+                  { return a.first < b.first; });
         vector<size_t> c = _FF_Q_arr[i].fanoutCone;
         for (size_t k = 0; k < _FF_Q_arr[i].inGate2Fanout.size(); k++)
         {
