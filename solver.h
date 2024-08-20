@@ -31,6 +31,7 @@ namespace Solver
     };
     class STAEngine;    // forward declaration
     class legalizer;    // forward declaration
+    class evaluator;    // forward declaration
     class GlobalPlacer; ///////////////////////////////
 
     class Solver
@@ -40,6 +41,7 @@ namespace Solver
         void setParserPtr(Parse::Parser *ptr) { _ptr_Parser = ptr; };
         void setSTAEnginePtr(STAEngine *ptr) { _ptr_STAEngine = ptr; };
         void setLegalizerPtr(legalizer *ptr) { _ptr_legalizer = ptr; };
+        void setEvaluatorPtr(evaluator *ptr) { _ptr_evaluator = ptr; };
         ///////////////////////////////////////////////
         void setGlobalPlacerPtr(GlobalPlacer *ptr) { _ptr_GlobalPlacer = ptr; };
         ///////////////////////////////////////////////
@@ -52,7 +54,7 @@ namespace Solver
         void solve_initbuild();
         void solve_findfeasible();
         vector<size_t> solve_findmaximal(const vector<size_t> &, size_t, pair<double, double> &, pair<double, double> &);
-        void feasible_cal(const vector<size_t> &);
+        void feasible_cal(const vector<size_t> &, const size_t &);
         void drawpic(const string &); ////////////////////////////
         ///////////////////////
 
@@ -61,12 +63,14 @@ namespace Solver
 
         friend class STAEngine;
         friend class legalizer;
+        friend class evaluator;
 
     private:
         // data part
         Parse::Parser *_ptr_Parser;
         STAEngine *_ptr_STAEngine;
         legalizer *_ptr_legalizer;
+        evaluator *_ptr_evaluator;
         ///////////////////////////////////////
         GlobalPlacer *_ptr_GlobalPlacer;
         ///////////////////////////////////////

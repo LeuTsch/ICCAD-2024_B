@@ -365,6 +365,8 @@ void Solver::Solver::solve_initbuild()
     // std::cout << "check1" << std::endl;
     // std::cout << "FFDsize: " << _FF_D_arr.size() << std::endl;
     //  build fanin fanout position
+
+    /*
     for (size_t i = 0; i < _FF_D_arr.size(); i++)
     {
         size_t D_id = i + _FF_D_OFFSET;
@@ -393,7 +395,6 @@ void Solver::Solver::solve_initbuild()
         }
     }
 
-    /*
     for (size_t i = 0; i < _FF_Q_arr.size(); i++)
     {
         size_t Q_id = i + _FF_Q_OFFSET;
@@ -472,6 +473,14 @@ void Solver::Solver::solve_findfeasible()
             double s = fo_pinID_slack_Dvec.at(0).second;
 
             double D_dia_len = fabs(_FF_D_arr.at(i).Dx_pos - _FF_D_arr.at(i).D_fanin_pos.first) + fabs(_FF_D_arr.at(i).Dy_pos - _FF_D_arr.at(i).D_fanin_pos.second) + s / (_ptr_Parser->_displaceDelay);
+
+            if (D_dia_len < 0)
+            {
+                _FF_D_arr[i].hasfeasible = 0;
+                _FF_D_arr.at(i).grouped = 0;
+                continue;
+            }
+
             double Dx_pos_r = _FF_D_arr.at(i).Dy_pos + _FF_D_arr.at(i).Dx_pos + 2 * dist; // x'=y+x //D shift right
             double Dy_pos_r = _FF_D_arr.at(i).Dy_pos - _FF_D_arr.at(i).Dx_pos - 2 * dist; // y'=y-x
 
@@ -507,14 +516,21 @@ void Solver::Solver::solve_findfeasible()
         {
             double Qx_pos_r = _FF_Q_arr.at(i).Qy_pos + _FF_Q_arr.at(i).Qx_pos - 2 * dist; // Q shift left
             double Qy_pos_r = _FF_Q_arr.at(i).Qy_pos - _FF_Q_arr.at(i).Qx_pos + 2 * dist;
+            bool Q_break = 0;
 
             for (size_t j = 0; j < fo_pinID_slack_Qvec.size(); j++)
             {
-
                 _FF_Q_arr.at(i).Q_fanout_pos.push_back(findPinPosition(fo_pinID_slack_Qvec.at(j).first));
                 double s = fo_pinID_slack_Qvec.at(j).second;
 
                 double Q_dia_len = fabs(_FF_Q_arr.at(i).Qx_pos - _FF_Q_arr.at(i).Q_fanout_pos.at(j).first) + fabs(_FF_Q_arr.at(i).Qy_pos - _FF_Q_arr.at(i).Q_fanout_pos.at(j).second) + s / (_ptr_Parser->_displaceDelay);
+                if (Q_dia_len < 0)
+                {
+                    _FF_D_arr[i].hasfeasible = 0;
+                    _FF_D_arr.at(i).grouped = 0;
+                    Q_break = 1;
+                    break;
+                }
                 coor_w_se Qx_s, Qx_e;
                 Qx_s.pos_val = Qx_pos_r - (2 * Q_dia_len);
                 Qx_s.type = 0;
@@ -536,6 +552,10 @@ void Solver::Solver::solve_findfeasible()
 
                 dia_y_arr.push_back(Qy_s);
                 dia_y_arr.push_back(Qy_e);
+            }
+            if (Q_break == 1)
+            {
+                break;
             }
         }
 
@@ -623,8 +643,8 @@ void Solver::Solver::solve()
 
         vector<Inst::feasible_coor> feas_x_clk;
         feas_x_clk.reserve(_FF_D_arr.size() * 2);
-        vector<Inst::feasible_coor> feas_y_clk;
-        feas_y_clk.reserve(_FF_D_arr.size() * 2);
+        // vector<Inst::feasible_coor> feas_y_clk;
+        // feas_y_clk.reserve(_FF_D_arr.size() * 2);
 
         for (int i = 0; i < _FF_D_arr.size(); i++)
         {
@@ -633,17 +653,18 @@ void Solver::Solver::solve()
             {
                 // collect
                 // may collect the empty value of no-feasible FF
+                assert(i == _FF_D_arr.at(i).fea_x_s.FF_id);
+                assert(i == _FF_D_arr.at(i).fea_x_e.FF_id);
                 feas_x_clk.push_back(_FF_D_arr.at(i).fea_x_s);
                 feas_x_clk.push_back(_FF_D_arr.at(i).fea_x_e);
 
-                feas_y_clk.push_back(_FF_D_arr.at(i).fea_y_s);
-                feas_y_clk.push_back(_FF_D_arr.at(i).fea_y_e);
+                // feas_y_clk.push_back(_FF_D_arr.at(i).fea_y_s);
+                // feas_y_clk.push_back(_FF_D_arr.at(i).fea_y_e);
             }
         }
 
         std::sort(feas_x_clk.begin(), feas_x_clk.end(), compareByPosVal_2);
-
-        std::sort(feas_y_clk.begin(), feas_y_clk.end(), compareByPosVal_2);
+        // std::sort(feas_y_clk.begin(), feas_y_clk.end(), compareByPosVal_2);
 
         size_t esssential_ff;
         // find maximal clique
@@ -656,9 +677,10 @@ void Solver::Solver::solve()
             {
 
                 ff_group.push_back(feas_x_clk.at(i - 1).FF_id + _FF_D_OFFSET);
-                if ((feas_x_clk.at(i - 1).type) == 0 && (feas_x_clk.at(i).type == 1))
+
+                if ((feas_x_clk.at(i - 1).type) == 0 && (feas_x_clk.at(i).type == 1)) // 0 is start, 1 is end
                 {
-                    // ff_group 沒有 essential, result_group有
+                    // ff_group 有一個 essential, result_group有，essential已經在裡面了，不用pushback
                     // record the essential is i
 
                     esssential_ff = feas_x_clk.at(i).FF_id + _FF_D_OFFSET;
@@ -669,9 +691,9 @@ void Solver::Solver::solve()
                     vector<size_t> result_group;
                     // find the position, 還原成正常座標
 
-                    result_group = solve_findmaximal(ff_group, esssential_ff, x_pos_r, y_pos_r);
+                    // x_pos_r and y_pos_r is pass by ref and get the pos value by this function
 
-                    result_group.push_back(esssential_ff);
+                    result_group = solve_findmaximal(ff_group, esssential_ff, x_pos_r, y_pos_r);
 
                     // preplace and slack release
                     pair<double, double> pos;
@@ -689,7 +711,9 @@ void Solver::Solver::solve()
                     // final_group有essential
 
                     //  calculate the feasible
-                    feasible_cal(final_group);
+
+                    feasible_cal(final_group, k);
+
                     // solve_findfeasible();
                     break;
                 }
@@ -705,6 +729,7 @@ void Solver::Solver::solve()
                     i = i - 1;
                 }
             }
+
             // std::cout << "Clear is completed" << std::endl;
             // std::cout << "After clustering, the size: " << feas_x_clk.size() << std::endl;
             // std::cout << _FF_D_arr[feas_x_clk[0].FF_id].fea_x_s.pos_val << std::endl;
@@ -733,7 +758,7 @@ void Solver::Solver::solve()
     std::cout << "Solver is completed !" << std::endl;
 }
 
-void Solver::Solver::feasible_cal(const vector<size_t> &final_group)
+void Solver::Solver::feasible_cal(const vector<size_t> &final_group, const size_t &k)
 {
     // std::cout << "Hello" << std::endl;
 
@@ -747,7 +772,7 @@ void Solver::Solver::feasible_cal(const vector<size_t> &final_group)
         {
             size_t FFid = ptr_FF_D->faninCone[kk] - _FF_Q_OFFSET;
 
-            if (_FF_D_arr[FFid].grouped == false) // if the slack release to the grouped FF, what should i do ?
+            if (_FF_D_arr[FFid].grouped == false && _FF_D_arr[FFid].getClk() == k) // if the slack release to the grouped FF, what should i do ?
             {
 
                 double dist = (_FF_Q_arr.at(i).Qx_pos - _FF_D_arr.at(i).Dx_pos) * 0.5;
@@ -761,6 +786,12 @@ void Solver::Solver::feasible_cal(const vector<size_t> &final_group)
                     double s = fo_pinID_slack_Dvec.at(0).second;
 
                     double D_dia_len = fabs(_FF_D_arr.at(FFid).Dx_pos - _FF_D_arr.at(FFid).D_fanin_pos.first) + fabs(_FF_D_arr.at(FFid).Dy_pos - _FF_D_arr.at(FFid).D_fanin_pos.second) + s / (_ptr_Parser->_displaceDelay);
+                    if (D_dia_len < 0)
+                    {
+                        _FF_D_arr[FFid].grouped = 0;
+                        _FF_D_arr[FFid].hasfeasible = 0;
+                        break;
+                    }
                     double Dx_pos_r = _FF_D_arr.at(FFid).Dy_pos + _FF_D_arr.at(FFid).Dx_pos + 2 * dist; // x'=y+x //D shift right
                     double Dy_pos_r = _FF_D_arr.at(FFid).Dy_pos - _FF_D_arr.at(FFid).Dx_pos - 2 * dist; // y'=y-x
 
@@ -794,6 +825,7 @@ void Solver::Solver::feasible_cal(const vector<size_t> &final_group)
 
                 if (fo_pinID_slack_Qvec.size() != 0) // avoid PI and no fanout
                 {
+                    bool Q_break = 0;
                     double Qx_pos_r = _FF_Q_arr.at(FFid).Qy_pos + _FF_Q_arr.at(FFid).Qx_pos - 2 * dist; // Q shift left
                     double Qy_pos_r = _FF_Q_arr.at(FFid).Qy_pos - _FF_Q_arr.at(FFid).Qx_pos + 2 * dist;
                     for (size_t j = 0; j < fo_pinID_slack_Qvec.size(); j++)
@@ -824,6 +856,12 @@ void Solver::Solver::feasible_cal(const vector<size_t> &final_group)
 
                         dia_y_arr.push_back(Qy_s);
                         dia_y_arr.push_back(Qy_e);
+                    }
+                    if (Q_break == 1)
+                    {
+                        _FF_D_arr[FFid].grouped = 0;
+                        _FF_D_arr[FFid].hasfeasible = 0;
+                        break;
                     }
                 }
 
@@ -870,19 +908,19 @@ void Solver::Solver::feasible_cal(const vector<size_t> &final_group)
 
                     _FF_D_arr.at(FFid).fea_x_s.type = 0;
                     _FF_D_arr.at(FFid).fea_x_s.pos_val = dia_x_arr.at(target_x - 1).pos_val;
-                    _FF_D_arr.at(FFid).fea_x_s.FF_id = i;
+                    _FF_D_arr.at(FFid).fea_x_s.FF_id = FFid;
 
                     _FF_D_arr.at(FFid).fea_x_e.type = 1;
                     _FF_D_arr.at(FFid).fea_x_e.pos_val = dia_x_arr.at(target_x).pos_val;
-                    _FF_D_arr.at(FFid).fea_x_e.FF_id = i;
+                    _FF_D_arr.at(FFid).fea_x_e.FF_id = FFid;
 
                     _FF_D_arr.at(FFid).fea_y_s.type = 0;
                     _FF_D_arr.at(FFid).fea_y_s.pos_val = dia_y_arr.at(target_y - 1).pos_val;
-                    _FF_D_arr.at(FFid).fea_y_s.FF_id = i;
+                    _FF_D_arr.at(FFid).fea_y_s.FF_id = FFid;
 
                     _FF_D_arr.at(FFid).fea_y_e.type = 1;
                     _FF_D_arr.at(FFid).fea_y_e.pos_val = dia_y_arr.at(target_y).pos_val;
-                    _FF_D_arr.at(FFid).fea_y_e.FF_id = i;
+                    _FF_D_arr.at(FFid).fea_y_e.FF_id = FFid;
                 }
             }
         }
@@ -914,6 +952,12 @@ void Solver::Solver::feasible_cal(const vector<size_t> &final_group)
                     double s = fo_pinID_slack_Dvec.at(0).second;
 
                     double D_dia_len = fabs(_FF_D_arr.at(FFid).Dx_pos - _FF_D_arr.at(FFid).D_fanin_pos.first) + fabs(_FF_D_arr.at(FFid).Dy_pos - _FF_D_arr.at(FFid).D_fanin_pos.second) + s / (_ptr_Parser->_displaceDelay);
+                    if (D_dia_len < 0)
+                    {
+                        _FF_D_arr[FFid].grouped = 0;
+                        _FF_D_arr[FFid].hasfeasible = 0;
+                        break;
+                    }
                     double Dx_pos_r = _FF_D_arr.at(FFid).Dy_pos + _FF_D_arr.at(FFid).Dx_pos + 2 * dist; // x'=y+x //D shift right
                     double Dy_pos_r = _FF_D_arr.at(FFid).Dy_pos - _FF_D_arr.at(FFid).Dx_pos - 2 * dist; // y'=y-x
 
@@ -1023,19 +1067,19 @@ void Solver::Solver::feasible_cal(const vector<size_t> &final_group)
 
                     _FF_D_arr.at(FFid).fea_x_s.type = 0;
                     _FF_D_arr.at(FFid).fea_x_s.pos_val = dia_x_arr.at(target_x - 1).pos_val;
-                    _FF_D_arr.at(FFid).fea_x_s.FF_id = i;
+                    _FF_D_arr.at(FFid).fea_x_s.FF_id = FFid;
 
                     _FF_D_arr.at(FFid).fea_x_e.type = 1;
                     _FF_D_arr.at(FFid).fea_x_e.pos_val = dia_x_arr.at(target_x).pos_val;
-                    _FF_D_arr.at(FFid).fea_x_e.FF_id = i;
+                    _FF_D_arr.at(FFid).fea_x_e.FF_id = FFid;
 
                     _FF_D_arr.at(FFid).fea_y_s.type = 0;
                     _FF_D_arr.at(FFid).fea_y_s.pos_val = dia_y_arr.at(target_y - 1).pos_val;
-                    _FF_D_arr.at(FFid).fea_y_s.FF_id = i;
+                    _FF_D_arr.at(FFid).fea_y_s.FF_id = FFid;
 
                     _FF_D_arr.at(FFid).fea_y_e.type = 1;
                     _FF_D_arr.at(FFid).fea_y_e.pos_val = dia_y_arr.at(target_y).pos_val;
-                    _FF_D_arr.at(FFid).fea_y_e.FF_id = i;
+                    _FF_D_arr.at(FFid).fea_y_e.FF_id = FFid;
                 }
             }
         }
@@ -1049,6 +1093,11 @@ vector<size_t> Solver::Solver::solve_findmaximal(const vector<size_t> &ff_group,
     double ess_x_e = _FF_D_arr.at(essential_ID - _FF_D_OFFSET).fea_x_e.pos_val;
     double ess_y_s = _FF_D_arr.at(essential_ID - _FF_D_OFFSET).fea_y_s.pos_val;
     double ess_y_e = _FF_D_arr.at(essential_ID - _FF_D_OFFSET).fea_y_e.pos_val;
+    pair<double, double> x_pos_r_temp, y_pos_r_temp;
+    x_pos_r_temp.first = ess_x_s;
+    x_pos_r_temp.second = ess_x_e;
+    y_pos_r_temp.first = ess_y_s;
+    y_pos_r_temp.second = ess_y_e;
 
     for (size_t i = 0; i < ff_group.size(); i++)
     {
@@ -1058,92 +1107,90 @@ vector<size_t> Solver::Solver::solve_findmaximal(const vector<size_t> &ff_group,
         double ff_y_e = _FF_D_arr.at(ff_group.at(i) - _FF_D_OFFSET).fea_y_e.pos_val;
         // std::cout << ff_x_s << " ," << ff_x_e << std::endl;
         size_t id = _FF_D_arr.at(ff_group.at(i) - _FF_D_OFFSET).fea_x_s.FF_id;
+        if (id != ff_group.at(i) - _FF_D_OFFSET)
+        {
+            std::cout << "id_xs: " << id << std::endl;
+            std::cout << "id_xe: " << _FF_D_arr.at(ff_group.at(i) - _FF_D_OFFSET).fea_x_e.FF_id << std::endl;
+            std::cout << "id_ys: " << _FF_D_arr.at(ff_group.at(i) - _FF_D_OFFSET).fea_y_s.FF_id << std::endl;
+            std::cout << "id_ye: " << _FF_D_arr.at(ff_group.at(i) - _FF_D_OFFSET).fea_y_e.FF_id << std::endl;
+            std::cout << "FF[14147]. : " << _FF_D_arr[14147].fea_x_s.FF_id << std::endl;
+            std::cout << "FF[3]. : " << _FF_D_arr[3].fea_x_s.FF_id << std::endl;
+            std::cout << "ff_group_id: " << ff_group.at(i) - _FF_D_OFFSET << std::endl;
+        }
+        assert(id == ff_group.at(i) - _FF_D_OFFSET);
         bool valid_x = 0;
         bool valid_y = 0;
+        pair<double, double> x_ori, y_ori;
+        x_ori = x_pos_r_temp; // record the original best area (pos_temp)
+        y_ori = y_pos_r_temp;
 
-        if (ess_x_s < ff_x_s)
+        if (x_pos_r_temp.first < ff_x_s)
         {
-            if (ess_x_e >= ff_x_s && ess_x_e < ff_x_e)
+            if (x_pos_r_temp.second >= ff_x_s && x_pos_r_temp.second < ff_x_e)
             {
-                x_pos_r.first = ff_x_s;
-                x_pos_r.second = ess_x_e;
+                x_pos_r_temp.first = ff_x_s;
                 valid_x = 1;
                 // std::cout << x_pos_r.first << " ," << x_pos_r.second << std::endl;
             }
-            else if (ess_x_e >= ff_x_e)
+            else if (x_pos_r_temp.second >= ff_x_e)
             {
-                x_pos_r.first = ff_x_s;
-                x_pos_r.second = ff_x_e;
+                x_pos_r_temp.first = ff_x_s;
+                x_pos_r_temp.second = ff_x_e;
                 valid_x = 1;
             }
             else
             {
-                x_pos_r.first = ess_x_s;
-                x_pos_r.second = ess_x_e;
                 valid_x = 0;
             }
         }
         else
-        { // ess_x_s >= ff_x_s
-            if (ff_x_e >= ess_x_s && ff_x_e < ess_x_e)
+        { // temp_x_s >= ff_x_s
+            if (ff_x_e >= x_pos_r_temp.first && ff_x_e < x_pos_r_temp.second)
             {
-                x_pos_r.first = ess_x_s;
-                x_pos_r.second = ff_x_e;
+                x_pos_r_temp.second = ff_x_e;
                 valid_x = 1;
             }
-            else if (ess_x_e < ff_x_e)
+            else if (x_pos_r_temp.second < ff_x_e)
             {
-                x_pos_r.first = ess_x_s;
-                x_pos_r.second = ess_x_e;
                 valid_x = 1;
             }
             else
             {
-                x_pos_r.first = ess_x_s;
-                x_pos_r.second = ess_x_e;
                 valid_x = 0;
             }
         }
 
-        if (ess_y_s < ff_y_s)
+        if (y_pos_r_temp.first < ff_y_s)
         {
-            if (ess_y_e >= ff_y_s && ess_y_e < ff_y_e)
+            if (y_pos_r_temp.second >= ff_y_s && y_pos_r_temp.second < ff_y_e)
             {
-                y_pos_r.first = ff_y_s;
-                y_pos_r.second = ess_y_e;
+                y_pos_r_temp.first = ff_y_s;
                 valid_y = 1;
             }
-            else if (ess_y_e >= ff_y_e)
+            else if (y_pos_r_temp.second >= ff_y_e)
             {
-                y_pos_r.first = ff_y_s;
-                y_pos_r.second = ff_y_e;
+                y_pos_r_temp.first = ff_y_s;
+                y_pos_r_temp.second = ff_y_e;
                 valid_y = 1;
             }
             else
             {
-                y_pos_r.first = ess_y_s;
-                y_pos_r.second = ess_y_e;
                 valid_y = 0;
             }
         }
         else
-        { // ess_x_s >= ff_x_s
-            if (ff_y_e >= ess_y_s && ff_y_e < ess_y_e)
+        { // temp_y_s >= ff_y_s
+            if (ff_y_e >= y_pos_r_temp.first && ff_y_e < y_pos_r_temp.second)
             {
-                y_pos_r.first = ess_y_s;
-                y_pos_r.second = ff_y_e;
+                y_pos_r_temp.second = ff_y_e;
                 valid_y = 1;
             }
-            else if (ess_y_e < ff_y_e)
+            else if (y_pos_r_temp.second < ff_y_e)
             {
-                y_pos_r.first = ess_y_s;
-                y_pos_r.second = ess_y_e;
                 valid_y = 1;
             }
             else
             {
-                y_pos_r.first = ess_y_s;
-                y_pos_r.second = ess_y_e;
                 valid_y = 0;
             }
         }
@@ -1152,8 +1199,15 @@ vector<size_t> Solver::Solver::solve_findmaximal(const vector<size_t> &ff_group,
         {
             result_group.push_back(id + _FF_D_OFFSET);
         }
+        else
+        {
+            x_pos_r_temp = x_ori;
+            y_pos_r_temp = y_ori;
+        }
     }
     // std::cout << "findmaximal is completed" << std::endl;
+    x_pos_r = x_pos_r_temp;
+    y_pos_r = y_pos_r_temp;
 
     return result_group;
 }
@@ -1338,10 +1392,12 @@ vector<size_t> Solver::Solver::prePlace(const vector<size_t> &ff_group, size_t e
             area = _ptr_Parser->_flipflopLib[i].Hight * _ptr_Parser->_flipflopLib[i].Width;
         }
     }
+    assert(maxSize > 0);
 
     std::cout << "step2: choose which ff be grouped" << std::endl;
     // step2: choose which ff be grouped
     // here we randomly choose other maxsize - 1 ff to be group
+    std::cout << "ff_group.size = " << ff_group.size() << std::endl;
     for (size_t i = 0; i < ff_group.size(); i++)
     {
         assert(ff_group[i] >= _FF_D_OFFSET);
@@ -1355,6 +1411,7 @@ vector<size_t> Solver::Solver::prePlace(const vector<size_t> &ff_group, size_t e
             break;
         }
     }
+    assert(ID_group.size() == maxSize);
 
     std::cout << "step3: place it and release slack" << std::endl;
     // step3: place it and release slack
@@ -1386,7 +1443,7 @@ vector<size_t> Solver::Solver::prePlace(const vector<size_t> &ff_group, size_t e
     for (size_t i = 0; int(i) < maxSize; i++)
     {
         pair<size_t, double> id2yMap;
-        id2yMap.first = ID_group[i];
+        id2yMap.first = ID_group.at(i);
         std::cout << "ID_group[i] = " << ID_group[i] << std::endl;
         id2yMap.second = findPinPosition(ID_group[i]).second;
         ID2HeightMap.push_back(id2yMap);
