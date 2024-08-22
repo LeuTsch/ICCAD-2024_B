@@ -48,7 +48,8 @@ namespace Solver
         void initSolver();
         void solve();
         void printOutput(const string &);
-        void test(); // do whatever test you want here
+        void test();                   // do whatever test you want here
+        void evaluate(const string &); // write the information of cost metric into the file named by the string
 
         /////////////////////// victor's part
         void solve_initbuild();
