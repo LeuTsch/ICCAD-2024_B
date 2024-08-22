@@ -35,6 +35,7 @@ namespace Solver
         double _totalPower;
         double _totalArea;
         double _totalUtil;
+        double _TNSbyDisplace;
         vector<vector<double>> _areaInBin;
         vector<vector<double>> _areaOfBin;
 
@@ -47,9 +48,11 @@ namespace Solver
         void calculatePower();
         void calculateUtil();
         void calculateArea();
+        void calculateTNSbyDisplace();
         pair<double, double> getFFLF(Inst::FF_D *);
         pair<double, double> getFFUR(Inst::FF_D *);
         double calSlack4FF(Inst::FF_D *);
+        double calDisplace4FF(Inst::FF_D *);
     };
 }
 #endif
