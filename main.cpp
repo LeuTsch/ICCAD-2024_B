@@ -37,7 +37,8 @@ int main(int argc, char *argv[])
     solver.initSolver();
     a = clock();
     cout << "Time for initialize solver: " << (a - b) << " sec" << endl;
-    solver.solve();
+    // solver.solve();
+    solver.test();
     b = clock();
     cout << "Time for solve: " << (b - a) << " sec" << endl;
     solver.printOutput(argv[argc - 1]);
