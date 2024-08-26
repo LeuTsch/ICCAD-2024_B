@@ -57,6 +57,7 @@ namespace Solver
         vector<size_t> solve_findmaximal(const vector<size_t> &, size_t, pair<double, double> &, pair<double, double> &);
         void feasible_cal(const vector<size_t> &, const size_t &);
         void drawpic(const string &); ////////////////////////////
+        void solve_by_window();
         ///////////////////////
 
         // friend class declaration
@@ -109,6 +110,7 @@ namespace Solver
         vector<pair<double, double>> getAdjacentPinPosition(size_t &) const; // the input should be ID of Q, or D pin. Return the position of related pin
 
         // auxilary function
+        bool FFinwindow(Inst::FF_D *, double &, double &, double &, double &);
         void findMaxSlack(); // calculate the max capacity(the critical path + slack) for all FF_D
         vector<struct PlacementRow> getPlacementRow() const { return _PlaceRow; };
         bool placementRowIsUniform(vector<struct PlacementRow> &) const;

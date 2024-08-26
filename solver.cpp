@@ -184,6 +184,7 @@ void Solver::Solver::initSolver()
         }
         if (isCLKNet)
         {
+            bool hasSource = false;
             for (const auto &PinName : netPinList)
             {
                 if (PinName.find("OUT") != std::string::npos || PinName.find("/") == std::string::npos || PinName.find("out") != std::string::npos)
@@ -192,9 +193,14 @@ void Solver::Solver::initSolver()
                     {
                         continue;
                     }
+                    hasSource = true;
                     _ClkList.push_back(PinName);
                     break;
                 }
+            }
+            if (!hasSource)
+            {
+                _ClkList.push_back("_NoSource");
             }
             for (const auto &PinName : netPinList)
             {
@@ -350,7 +356,6 @@ void Solver::Solver::solve_initbuild()
     // build the coordinate vector
     for (size_t i = 0; i < _FF_D_arr.size(); i++)
     {
-
         double Dx = findPinPosition(i + _FF_D_OFFSET).first;
         _FF_D_arr.at(i).Dx_pos = Dx;
 
@@ -962,8 +967,14 @@ void Solver::Solver::feasible_cal(const vector<size_t> &final_group, const size_
         {
             size_t FFid = ptr_FF_Q->fanoutCone[kk] - _FF_D_OFFSET;
             // std::cout << "FFID: " << FFid << std::endl;
+            // && (_FF_D_arr[FFid].getClk() == k || _FF_D_arr[FFid].getClk() == k+1 || _FF_D_arr[FFid].getClk() == k+2)
+            bool renew;
+            if (_FF_D_arr[FFid].getClk() == k)
+            {
+                renew == true;
+            }
 
-            if (_FF_D_arr[FFid].grouped == false && _FF_D_arr[FFid].getClk() == k) // if the slack release to the grouped FF, what should i do ?
+            if (_FF_D_arr[FFid].grouped == false && renew == true) // if the slack release to the grouped FF, what should i do ?
             {
 
                 double dist = (_FF_Q_arr.at(FFid).Qx_pos - _FF_D_arr.at(FFid).Dx_pos) * 0.5;
@@ -1264,6 +1275,255 @@ void Solver::Solver::drawpic(const string &s)
     vector<size_t> NetIDs;
 
     _ptr_GlobalPlacer->placementVisualization(s, FFIDs, GateIDs, NetIDs);
+}
+
+void Solver::Solver::solve_by_window()
+{
+    evaluate("init Metrix.txt");
+    //drawpic("pic_init.plt");
+
+    solve_initbuild();
+    solve_findfeasible();
+
+    std::map<size_t, size_t> MBFFSfinal;
+
+    double width = _ptr_Parser->_dieRx - _ptr_Parser->_dieLx;
+    double height = _ptr_Parser->_dieRy - _ptr_Parser->_dieLy;
+    /////////////////////////////////////////////////////////////change the parameters
+    int slice = 25;
+    bool corner = false;
+    ////////////////////////////////////////////////////////////
+
+    double window_w = width / slice;
+    double window_h = height / slice;
+    vector<vector<vector<size_t>>> FF_inwindow(slice, vector<vector<size_t>>(slice)); //[0][0] stores the id of FF in (0,0)
+    // construct FF_inwindow
+    for (int id = 0; id < _FF_D_arr.size(); id++)
+    {
+        // test
+        // std::cout << "CLK.size(): " << _ClkList.size() << std::endl;
+        // std::cout << "FFID: " << id << " ,CLK: " << _FF_D_arr[id].getClk() << std::endl;
+        int x = std::floor(getFFPosition(&_FF_D_arr[id]).first / window_w);
+        int y = std::floor(getFFPosition(&_FF_D_arr[id]).second / window_h);
+        if (x == slice)
+        {
+            x = slice - 1;
+        }
+        if (y == slice)
+        {
+            y = slice - 1;
+        }
+        FF_inwindow[x][y].push_back(id);
+    }
+
+    vector<size_t> FF_remain; // store the remain ff index
+    FF_remain.reserve(_FF_D_arr.size() + 1);
+    std::unordered_map<size_t, size_t> val_idxmap; // {FF_D_index: FF_remain_idx}
+
+    for (int m = 0; m < slice; m++)
+    {
+        for (int n = 0; n < slice; n++)
+        {
+            vector<vector<Inst::feasible_coor>> CLKtofeas_x(_ClkList.size());
+            for (int c = 0; c < FF_inwindow[m][n].size(); c++)
+            {
+                size_t ffid = FF_inwindow[m][n][c];
+                // std::cout << "FFD.size: " << _FF_D_arr.size() << std::endl;
+                // std::cout << "ffid: " << ffid << std::endl;
+                // std::cout << "CLK: " << _FF_D_arr[ffid].getClk()<< std::endl;
+                if (_FF_D_arr[ffid].getClk() < _ClkList.size() && _FF_D_arr[ffid].hasfeasible == 1)
+                {
+                    CLKtofeas_x.at(_FF_D_arr[ffid].getClk()).push_back(_FF_D_arr[ffid].fea_x_s);
+                    CLKtofeas_x[_FF_D_arr[ffid].getClk()].push_back(_FF_D_arr[ffid].fea_x_e);
+                }
+            }
+
+            for (size_t k = 0; k < _ClkList.size(); k++)
+            {
+                vector<Inst::feasible_coor> feas_x_clk;
+                feas_x_clk = CLKtofeas_x[k];
+
+                std::sort(feas_x_clk.begin(), feas_x_clk.end(), compareByPosVal_2);
+                // std::sort(feas_y_clk.begin(), feas_y_clk.end(), compareByPosVal_2);
+
+                size_t esssential_ff;
+                // find maximal clique
+                while (!feas_x_clk.empty())
+                {
+                    vector<size_t> ff_group;
+
+                    // std::cout << "Before clustering, the size: " << feas_x_clk.size() << std::endl;
+                    for (int i = 1; i < feas_x_clk.size(); i++)
+                    {
+
+                        ff_group.push_back(feas_x_clk.at(i - 1).FF_id + _FF_D_OFFSET);
+
+                        if ((feas_x_clk.at(i - 1).type) == 0 && (feas_x_clk.at(i).type == 1)) // 0 is start, 1 is end
+                        {
+                            // ff_group 有一個 essential, result_group有，essential已經在裡面了，不用pushback
+                            // record the essential is i
+
+                            esssential_ff = feas_x_clk.at(i).FF_id + _FF_D_OFFSET;
+
+                            // consider the y part
+                            pair<double, double> x_pos_r, y_pos_r; // final region
+                            vector<size_t> final_group;
+                            vector<size_t> result_group;
+                            // find the position, 還原成正常座標
+
+                            // x_pos_r and y_pos_r is pass by ref and get the pos value by this function
+                            result_group = solve_findmaximal(ff_group, esssential_ff, x_pos_r, y_pos_r);
+
+                            // preplace and slack release
+                            pair<double, double> pos;
+                            pos.first = (x_pos_r.first + x_pos_r.second) * 0.5; // choose the middle point
+                            pos.second = (y_pos_r.first + y_pos_r.second) * 0.5;
+                            double x_ori = pos.first;
+                            double y_ori = pos.second;
+                            // change to original coordinate (x'=y+x, y'=y-x)
+                            pos.first = (x_ori - y_ori) * 0.5;  // x=(x'-y')/2
+                            pos.second = (x_ori + y_ori) * 0.5; // y=(x'+y')/2
+                            // std::cout << "real feasible center" << pos.first << " ," << pos.second << std::endl;
+
+                            double w = m * window_w;
+                            double w_r = (m + 1) * window_w;
+                            double h = n * window_h;
+                            double h_u = (n + 1) * window_h;
+
+                            if (corner == true)
+                            {
+                                if (pos.first >= w && pos.first <= w_r && pos.second >= h && pos.second <= h_u)
+                                {
+                                    final_group = prePlace(result_group, esssential_ff, pos);
+                                    std::cout << "----------In the square !!!----------" << std::endl;
+                                }
+                                else
+                                {
+                                    double disLL = fabs(pos.first - w) + fabs(pos.second - h);
+                                    double disLR = fabs(pos.first - w_r) + fabs(pos.second - h);
+                                    double disUL = fabs(pos.first - w) + fabs(pos.second - h_u);
+                                    double disUR = fabs(pos.first - w_r) + fabs(pos.second - h_u);
+                                    double min = disLL;
+                                    if (disLR < min)
+                                    {
+                                        min = disLR;
+                                    }
+                                    if (disUL < min)
+                                    {
+                                        min = disUL;
+                                    }
+                                    if (disUR < min)
+                                    {
+                                        min = disUR;
+                                    }
+
+                                    if (min == disLL)
+                                    {
+                                        pos.first = w;
+                                        pos.second = h;
+                                        std::cout << "xxxxxxxxxxput on LL !!!xxxxxxxxxx" << std::endl;
+                                        std::cout << "corner of window: " << pos.first << " ," << pos.second << std::endl;
+                                        final_group = prePlace(result_group, esssential_ff, pos);
+                                    }
+                                    else if (min == disLR)
+                                    {
+                                        pos.first = w_r;
+                                        pos.second = h;
+                                        std::cout << "xxxxxxxxxxput on LR !!!xxxxxxxxxx" << std::endl;
+                                        std::cout << "corner of window: " << pos.first << " ," << pos.second << std::endl;
+                                        final_group = prePlace(result_group, esssential_ff, pos);
+                                    }
+                                    else if (min == disUL)
+                                    {
+                                        pos.first = w;
+                                        pos.second = h_u;
+                                        std::cout << "xxxxxxxxxxput on UL !!!xxxxxxxxxx" << std::endl;
+                                        std::cout << "corner of window: " << pos.first << " ," << pos.second << std::endl;
+                                        final_group = prePlace(result_group, esssential_ff, pos);
+                                    }
+                                    else
+                                    {
+                                        pos.first = w_r;
+                                        pos.second = h_u;
+                                        std::cout << "xxxxxxxxxxput on UR !!!xxxxxxxxxx" << std::endl;
+                                        std::cout << "corner of window: " << pos.first << " ," << pos.second << std::endl;
+                                        final_group = prePlace(result_group, esssential_ff, pos);
+                                    }
+                                }
+                            }
+                            else
+                            {
+
+                                final_group = prePlace(result_group, esssential_ff, pos);
+                            }
+
+                            auto it2 = MBFFSfinal.find(final_group.size());
+                            if (it2 == MBFFSfinal.end())
+                            {
+                                MBFFSfinal.insert({final_group.size(), 1});
+                            }
+                            else
+                            {
+                                MBFFSfinal.at(final_group.size()) += 1;
+                            }
+
+                            feasible_cal(final_group, k);
+
+                            break;
+                        }
+                    }
+
+                    // delete the grouped member in feas_x_clk
+                    for (size_t i = 0; i < feas_x_clk.size(); i++)
+                    {
+                        // std::cout << "FF" << feas_x_clk.at(i).FF_id << " group or not: " << _FF_D_arr[feas_x_clk.at(i).FF_id].grouped << std::endl;
+                        if (_FF_D_arr[feas_x_clk.at(i).FF_id].grouped == 1)
+                        {
+
+                            feas_x_clk.erase(feas_x_clk.begin() + i);
+                            i = i - 1;
+                        }
+                    }
+                }
+                // std::cout << "CLKlist " << k << " is finished" << std::endl;
+            }
+
+            // string s = std::to_string(10 * w / window_w + h / window_h);
+            // drawpic("pic_" + s + ".plt");
+        }
+    }
+
+    MBFFSfinal.insert({0, 0});
+    for (int idx = 0; idx < _FF_D_arr.size(); idx++)
+    {
+        if (_FF_D_arr[idx].grouped == 0)
+        {
+            MBFFSfinal.at(0) += 1;
+        }
+    }
+    std::cout << "After preplacing" << std::endl;
+    for (const auto &pair : MBFFSfinal)
+    {
+        std::cout << pair.first << ": " << pair.second << std::endl;
+    }
+
+    //drawpic("pic_e.plt");
+    evaluate("before legal Metrix.txt");
+    legalize();
+    evaluate("after legal Metrix.txt");
+    //drawpic("pic_final.plt");
+    std::cout << "Solver is completed !" << std::endl;
+}
+
+bool Solver::Solver::FFinwindow(Inst::FF_D *ptr_FFD, double &LLx, double &LLy, double &URx, double &URy)
+{
+    pair<double, double> pos = ptr_FFD->getPosition();
+    if (pos.first >= LLx && pos.first < URx && pos.second >= LLy && pos.second < URy)
+    {
+        return true;
+    }
+
+    return false;
 }
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////

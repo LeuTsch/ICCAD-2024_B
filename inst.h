@@ -95,6 +95,7 @@ namespace Inst
             outGate2Fanin.clear();
             inGate2Fanin.clear();
             slack = 0;
+            _clkID = -1;
         }
         FF_D(string, const pair<double, double>);
         ~FF_D();
@@ -158,6 +159,7 @@ namespace Inst
             inGate2Fanout.clear();
             grouped = false;
             slack = 0;
+            _clkID = -1;
         }
         FF_Q(string, const pair<double, double>);
         ~FF_Q();
