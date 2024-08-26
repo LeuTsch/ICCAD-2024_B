@@ -363,7 +363,7 @@ size_t Solver::STAEngine::getRelatedNet(const size_t &id) const
 {
     for (const auto &netID : _ptrSolver->_ID_to_instance[id]->getRelatedNet())
     {
-        for (const auto &pinID : _ptrSolver->_NetList[netID])
+        for (const auto &pinID : _ptrSolver->_NetList.at(netID))
         {
             if (pinID == id)
             {

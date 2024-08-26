@@ -1485,11 +1485,12 @@ void Solver::Solver::solve_by_window()
                         }
                     }
                 }
-                // std::cout << "CLKlist " << k << " is finished" << std::endl;
+                //std::cout << "CLKlist " << k << " is finished" << std::endl;
             }
 
             // string s = std::to_string(10 * w / window_w + h / window_h);
             // drawpic("pic_" + s + ".plt");
+            std::cout<< "M N = "<<m<<" " << n << std::endl;
         }
     }
 
