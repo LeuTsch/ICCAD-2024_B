@@ -2241,7 +2241,7 @@ void Solver::Solver::findMaxSlack()
     }
 }
 
-vector<pair<size_t, double>> Solver::Solver::getSlack2ConnectedFF(const size_t &id) // the input should be global ID
+vector<pair<size_t, double>> Solver::Solver::getSlack2ConnectedFF(const size_t &id, bool considerQpinDelay, double weight) // the input should be global ID
 {
     vector<pair<size_t, double>> output;
     output.reserve(128);
@@ -2300,7 +2300,11 @@ vector<pair<size_t, double>> Solver::Solver::getSlack2ConnectedFF(const size_t &
                 else
                 {
                     // if is not grouped give half slack to FF_D
-                    s = (_FF_D_arr[id - _FF_D_OFFSET].maxSlack - (distance * _ptr_Parser->_displaceDelay)) / 2 - _avgQpinDelayDiff;
+                    s = (_FF_D_arr[id - _FF_D_OFFSET].maxSlack - (distance * _ptr_Parser->_displaceDelay)) / 2;
+                    if (considerQpinDelay)
+                    {
+                        s -= _avgQpinDelayDiff * weight;
+                    }
                 }
 
                 if (s < slackRemain)
@@ -2327,7 +2331,8 @@ vector<pair<size_t, double>> Solver::Solver::getSlack2ConnectedFF(const size_t &
                 else
                 {
                     // if is not grouped give half slack to FF_D
-                    s = (_FF_D_arr[id - _FF_D_OFFSET].maxSlack - (distance * _ptr_Parser->_displaceDelay)) / 2 - _avgQpinDelayDiff;
+                    s = (_FF_D_arr[id - _FF_D_OFFSET].maxSlack - (distance * _ptr_Parser->_displaceDelay)) / 2;
+                    s -= _avgQpinDelayDiff * weight;
                 }
 
                 if (s < slackRemain)

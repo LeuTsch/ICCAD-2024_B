@@ -104,7 +104,7 @@ namespace Solver
 
         // function part
         vector<size_t> prePlace(const vector<FF_D_ID> &, size_t, pair<double, double>); // return the FF_D_ID be grouped
-        vector<pair<size_t, double>> getSlack2ConnectedFF(const size_t &);
+        vector<pair<size_t, double>> getSlack2ConnectedFF(const size_t &, bool considerQpinDelay = true, double weight = 1);
         // if the the connected FF has grouped, return the 100% of remaining slack. Otherwise, it would be 50%
         void legalize();
 
