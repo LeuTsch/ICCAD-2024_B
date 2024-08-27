@@ -63,7 +63,7 @@ namespace Solver
         vector<size_t> solve_findmaximal(const vector<size_t> &, size_t, pair<double, double> &, pair<double, double> &);
         void feasible_cal(const vector<size_t> &, const size_t &, double &, double &, double &, double &);
         void drawpic(const string &);
-        void solve_by_window();
+        void solve_by_window(int &, double &, const string &);
         void windowbinfeasible(vector<size_t> &);
         ///////////////////////
 

@@ -415,70 +415,6 @@ void Solver::Solver::solve_initbuild()
         double Qy = findPinPosition(i + _FF_Q_OFFSET).second;
         _FF_Q_arr.at(i).Qy_pos = Qy;
     }
-    // std::cout << "check1" << std::endl;
-    // std::cout << "FFDsize: " << _FF_D_arr.size() << std::endl;
-    // build fanin fanout position
-
-    /*
-    for (size_t i = 0; i < _FF_D_arr.size(); i++)
-    {
-        size_t D_id = i + _FF_D_OFFSET;
-
-        // std::cout << "size :" << _FF_D_arr.at(i).faninCone.size() << std::endl;
-        if (_FF_D_arr.at(i).faninCone.size() == 0)
-        {
-            pair<double, double> PIpos = {-1, -1}; // to check the PIO
-            _FF_D_arr.at(i).D_fanin_pos = PIpos;
-        }
-        else
-        {
-            size_t prev_id = _FF_D_arr.at(i).faninCone.at(0);
-            size_t gatepinid = _FF_D_arr.at(i).outGate2Fanin.at(0); // all index should get the same id
-
-            if (gatepinid == _ID_to_instance.size())
-            {
-                pair<double, double> ffQPinPos = findPinPosition(prev_id);
-                _FF_D_arr.at(i).D_fanin_pos = ffQPinPos;
-            }
-            else
-            {
-                pair<double, double> GatePinPos = findPinPosition(gatepinid);
-                _FF_D_arr.at(i).D_fanin_pos = GatePinPos;
-            }
-        }
-    }
-
-    for (size_t i = 0; i < _FF_Q_arr.size(); i++)
-    {
-        size_t Q_id = i + _FF_Q_OFFSET;
-        _FF_Q_arr.at(i).Q_fanout_pos.reserve(128);
-
-        if (_FF_Q_arr.at(i).fanoutCone.size() == 0)
-        {
-            _FF_Q_arr.at(i).Q_fanout_pos = {{-1, -1}}; // check PIO
-        }
-        else
-        {
-            for (size_t j = 0; j < _FF_Q_arr.at(i).fanoutCone.size(); j++)
-            {
-
-                size_t next_id = _FF_Q_arr.at(i).fanoutCone.at(j);      // id of next ff
-                size_t gatepinid = _FF_Q_arr.at(i).inGate2Fanout.at(j); // pinID of fanout
-
-                if (gatepinid == _ID_to_instance.size())
-                {
-                    pair<double, double> ffDPinPos = findPinPosition(next_id); // directly connected, need to check later
-                    _FF_Q_arr.at(i).Q_fanout_pos.push_back(ffDPinPos);
-                }
-                else
-                {
-                    pair<double, double> GatePinPos = findPinPosition(gatepinid);
-                    _FF_Q_arr.at(i).Q_fanout_pos.push_back(GatePinPos);
-                }
-            }
-        }
-    }
-    */
 
     std::cout << "initbuild is completed" << std::endl;
 }
@@ -831,7 +767,7 @@ void Solver::Solver::windowbinfeasible(vector<size_t> &ffbingroup)
         vector<coor_w_se> dia_x_arr;
         vector<coor_w_se> dia_y_arr;
 
-        vector<pair<size_t, double>> fi_pinID_slack_Dvec = getSlack2ConnectedFF(i + _FF_D_OFFSET);
+        vector<pair<size_t, double>> fi_pinID_slack_Dvec = getSlack2ConnectedFF(i + _FF_D_OFFSET, true, 1);
         if (fi_pinID_slack_Dvec.size() != 0) // avoid no fanin
         {
             _FF_D_arr.at(i).D_fanin_pos = findPinPosition(fi_pinID_slack_Dvec.at(0).first);
@@ -875,7 +811,7 @@ void Solver::Solver::windowbinfeasible(vector<size_t> &ffbingroup)
         }
 
         // Q part, run through all fanout.
-        vector<pair<size_t, double>> fo_pinID_slack_Qvec = getSlack2ConnectedFF(i + _FF_Q_OFFSET);
+        vector<pair<size_t, double>> fo_pinID_slack_Qvec = getSlack2ConnectedFF(i + _FF_Q_OFFSET, true, 1);
 
         if (fo_pinID_slack_Qvec.size() != 0)
         {
@@ -1491,10 +1427,12 @@ void Solver::Solver::drawpic(const string &s)
     _ptr_GlobalPlacer->placementVisualization(s, FFIDs, GateIDs, NetIDs);
 }
 
-void Solver::Solver::solve_by_window()
+void Solver::Solver::solve_by_window(int &slice, double &low_weight, const string &filename)
 {
-    evaluate("init Metrix.txt");
-    drawpic("pic_init.plt");
+    // low_weight = 0: put at the center of feasible
+    // low_weight = 1; put at the lowest point of fesible
+    // evaluate("init Metrix.txt");
+    // drawpic("pic_init.plt");
 
     solve_initbuild();
     // solve_findfeasible();
@@ -1504,8 +1442,8 @@ void Solver::Solver::solve_by_window()
     double width = _ptr_Parser->_dieRx - _ptr_Parser->_dieLx;
     double height = _ptr_Parser->_dieRy - _ptr_Parser->_dieLy;
     /////////////////////////////////////////////////////////////change the parameters
-    int slice = 50;
-    double low_weight = 0.1;
+    // int slice = 200;
+    // double low_weight = 1;
     ////////////////////////////////////////////////////////////
 
     double window_w = width / slice;
@@ -1584,7 +1522,7 @@ void Solver::Solver::solve_by_window()
                             esssential_ff = feas_x_clk.at(i).FF_id + _FF_D_OFFSET;
 
                             // consider the y part
-                            pair<double, double> x_pos_r, y_pos_r; // final region
+                            pair<double, double> x_pos_r, y_pos_r; // final region, x_pos_r(s&e), y_pos_r(s&e)
                             vector<size_t> final_group;
                             vector<size_t> result_group;
                             // find the position, 還原成正常座標
@@ -1593,7 +1531,7 @@ void Solver::Solver::solve_by_window()
                             result_group = solve_findmaximal(ff_group, esssential_ff, x_pos_r, y_pos_r);
 
                             // preplace and slack release
-                            pair<double, double> pos;
+                            pair<double, double> pos;                              // feasible center
                             double x_ori = (x_pos_r.first + x_pos_r.second) * 0.5; // choose the middle point
                             double y_ori = (y_pos_r.first + y_pos_r.second) * 0.5;
                             // change to original coordinate (x'=y+x, y'=y-x)
@@ -1616,7 +1554,8 @@ void Solver::Solver::solve_by_window()
                             decision_pos.first = (low_weight) * (lowest_pos.first) + (1 - low_weight) * (pos.first);
                             decision_pos.second = (low_weight) * (lowest_pos.second) + (1 - low_weight) * (pos.second);
 
-                            final_group = prePlace(result_group, esssential_ff, pos);
+                            final_group = prePlace(result_group, esssential_ff, decision_pos);
+                            // final_group = prePlace(result_group, esssential_ff, pos);
                             // std::cout << "finalgroupsize: " << final_group.size() << std::endl;
 
                             auto it2 = MBFFSfinal.find(final_group.size());
@@ -1675,11 +1614,13 @@ void Solver::Solver::solve_by_window()
         std::cout << pair.first << ": " << pair.second << std::endl;
     }
 
-    drawpic("pic_e.plt");
-    evaluate("before legal Metrix.txt");
+    // drawpic("pic_e.plt");
+    string s1 = filename + "before_leg_Metrix.txt";
+    evaluate(s1);
+    string s2 = filename + "after_leg_Metrix.txt";
     legalize();
-    evaluate("after legal Metrix.txt");
-    drawpic("pic_final.plt");
+    evaluate(s2);
+    // drawpic("pic_final.plt");
     std::cout << "Solver is completed !" << std::endl;
 }
 
@@ -1792,18 +1733,65 @@ void Solver::Solver::test()
     solve_findfeasible();
     _ptr_evaluator->setSolverPtr(this);
 
-    std::cout << "test size: " << _ID_to_instance[1011197]->getRelatedNet().size() << std::endl;
-    std::cout << "FFDOFFSET: " << _FF_D_OFFSET << std::endl;
-    std::cout << "FFDsize: " << _FF_D_arr.size() << std::endl;
-    assert(_ID_to_instance[1011197]->getType() == Inst::INST_FF_D);
-
     for (int i = 0; i < _FF_D_arr.size(); i++)
     {
-        if (_ID_to_instance[i + _FF_D_OFFSET]->getRelatedNet().size() == 0)
+
+        // double slack_ori = _ptr_evaluator->calSlack4FF(&_FF_D_arr[i]);
+        vector<size_t> ff_group;
+        ff_group.push_back(i + _FF_D_OFFSET);
+
+        double x_r = _FF_D_arr[i].fea_x_e.pos_val;
+        double y_r = _FF_D_arr[i].fea_y_s.pos_val;
+        pair<double, double> pos;
+        pos.first = (x_r - y_r) * 0.5;
+        pos.second = (x_r + y_r) * 0.5;
+
+        // pair<double, double> fanoutpos = findPinPosition(getSlack2ConnectedFF(i + _FF_Q_OFFSET).at(0).first);
+
+        // prePlace(ff_group, i + _FF_D_OFFSET, pos);
+        setFFPosition(&_FF_D_arr[i], pos);
+        // double slack = _ptr_evaluator->calSlack4FF(&_FF_D_arr[i]);
+
+        // feasible_cal(ff_group, 0); // k para need to change back
+
+        /*if (slack < 0)
         {
-            std::cout << "FF_" << i << ", id: " << i + _FF_D_OFFSET << " size: " << _ID_to_instance[i + _FF_D_OFFSET]->getRelatedNet().size() << std::endl;
-        }
+            std::cout << "slack_ori " << i << " : " << slack_ori << std::endl;
+            std::cout << "slack " << i << " : " << slack << std::endl;
+        }*/
     }
+    // std::cout << "num of 1 fanout FF: " << ctr << std::endl;
+    evaluate("test Metrix.txt");
+
+    /*
+     vector<size_t> ff_group;
+     size_t k = 18832;
+     ff_group.push_back(k + _FF_D_OFFSET);
+
+     std::cout << "faninsize: " << _FF_D_arr[k].faninCone.size() << std::endl;
+     std::cout << "fanoutsize: " << _FF_Q_arr[k].fanoutCone.size() << std::endl;
+     std::cout << "faninpos: " << findPinPosition(getSlack2ConnectedFF(k + _FF_D_OFFSET).at(0).first).first << " ," << findPinPosition(getSlack2ConnectedFF(k + _FF_D_OFFSET).at(0).first).second << std::endl;
+     std::cout << "FFpos: " << getFFPosition(&_FF_D_arr[k]).first << " ," << getFFPosition(&_FF_D_arr[k]).second << std::endl;
+     std::cout << "Dpin_pos: " << findPinPosition(k + _FF_D_OFFSET).first << " ," << findPinPosition(k + _FF_D_OFFSET).second << std::endl;
+     std::cout << "slack: " << getSlack2ConnectedFF(k + _FF_D_OFFSET).at(0).second << std::endl;
+     double x_r = _FF_D_arr[k].fea_x_e.pos_val;
+     double y_r = _FF_D_arr[k].fea_y_s.pos_val;
+     pair<double, double> pos;
+     pos.first = (x_r - y_r) * 0.5;
+     pos.second = (x_r + y_r) * 0.5;
+     std::cout << "D pin rightmost pos caculated by feasible: " << pos.first << " ," << pos.second << std::endl;
+     prePlace(ff_group, k + _FF_D_OFFSET, pos);
+     std::cout << "FF Dpin final pos: " << findPinPosition(k + _FF_D_OFFSET).first << " ," << findPinPosition(k + _FF_D_OFFSET).second << std::endl;
+     double slack = _ptr_evaluator->calSlack4FF(&_FF_D_arr[k]);
+     std::cout << "FF_" << k << " slack " << " : " << slack << std::endl;
+     std::cout << "maxSlack: " << _FF_D_arr[k].maxSlack << std::endl;
+     // evaluate("test Metrix.txt");
+     */
+
+    /*// STA test
+    size_t in = _Name_to_ID.at("C9/IN");
+    size_t out = _Name_to_ID.at("C12/OUT");
+    std::cout << _ptr_STAEngine->getDistance(in, out) << std::endl;*/
 }
 
 vector<size_t> Solver::Solver::prePlace(const vector<size_t> &ff_group, size_t essential_ID, pair<double, double> pos)
