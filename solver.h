@@ -61,9 +61,10 @@ namespace Solver
         void solve_initbuild();
         void solve_findfeasible();
         vector<size_t> solve_findmaximal(const vector<size_t> &, size_t, pair<double, double> &, pair<double, double> &);
-        void feasible_cal(const vector<size_t> &, const size_t &);
-        void drawpic(const string &); ////////////////////////////
+        void feasible_cal(const vector<size_t> &, const size_t &, double &, double &, double &, double &);
+        void drawpic(const string &);
         void solve_by_window();
+        void windowbinfeasible(vector<size_t> &);
         ///////////////////////
 
         // friend class declaration

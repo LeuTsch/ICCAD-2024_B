@@ -768,7 +768,7 @@ void Solver::Solver::solve()
 
                     //  calculate the feasible
 
-                    feasible_cal(final_group, k);
+                    // feasible_cal(final_group, k);
 
                     // solve_findfeasible();
                     break;
@@ -816,7 +816,179 @@ void Solver::Solver::solve()
     std::cout << "Solver is completed !" << std::endl;
 }
 
-void Solver::Solver::feasible_cal(const vector<size_t> &final_group, const size_t &k)
+void Solver::Solver::windowbinfeasible(vector<size_t> &ffbingroup)
+{
+
+    if (ffbingroup.size() == 0)
+    {
+        return;
+    }
+
+    for (size_t bin = 0; bin < ffbingroup.size(); bin++)
+    {
+        size_t i = ffbingroup[bin];
+        double dist = (_FF_Q_arr.at(i).Qx_pos - _FF_D_arr.at(i).Dx_pos) * 0.5;
+        vector<coor_w_se> dia_x_arr;
+        vector<coor_w_se> dia_y_arr;
+
+        vector<pair<size_t, double>> fi_pinID_slack_Dvec = getSlack2ConnectedFF(i + _FF_D_OFFSET);
+        if (fi_pinID_slack_Dvec.size() != 0) // avoid no fanin
+        {
+            _FF_D_arr.at(i).D_fanin_pos = findPinPosition(fi_pinID_slack_Dvec.at(0).first);
+
+            double fi_x_r = _FF_D_arr.at(i).D_fanin_pos.second + _FF_D_arr.at(i).D_fanin_pos.first + 2 * dist; // x'=y+x //D shift right
+            double fi_y_r = _FF_D_arr.at(i).D_fanin_pos.second - _FF_D_arr.at(i).D_fanin_pos.first - 2 * dist; // y'=y-x
+
+            double s = fi_pinID_slack_Dvec.at(0).second;
+
+            double D_dia_len = fabs(_FF_D_arr.at(i).Dx_pos - _FF_D_arr.at(i).D_fanin_pos.first) + fabs(_FF_D_arr.at(i).Dy_pos - _FF_D_arr.at(i).D_fanin_pos.second) + s / (_ptr_Parser->_displaceDelay);
+
+            if (D_dia_len < 0)
+            {
+                _FF_D_arr[i].hasfeasible = 0;
+                continue;
+            }
+
+            coor_w_se Dx_s, Dx_e;
+            dia_x_arr.reserve(256);
+            Dx_s.pos_val = fi_x_r - (D_dia_len);
+            Dx_s.type = 0;
+            Dx_s.or_ind = 0;
+            Dx_e.pos_val = fi_x_r + (D_dia_len);
+            Dx_e.type = 1;
+            Dx_e.or_ind = 0;
+
+            dia_x_arr.push_back(Dx_s);
+            dia_x_arr.push_back(Dx_e);
+
+            coor_w_se Dy_s, Dy_e;
+            dia_y_arr.reserve(256);
+            Dy_s.pos_val = fi_y_r - (D_dia_len);
+            Dy_s.type = 0;
+            Dy_s.or_ind = 0;
+            Dy_e.pos_val = fi_y_r + (D_dia_len);
+            Dy_e.type = 1;
+            Dy_e.or_ind = 0;
+
+            dia_y_arr.push_back(Dy_s);
+            dia_y_arr.push_back(Dy_e);
+        }
+
+        // Q part, run through all fanout.
+        vector<pair<size_t, double>> fo_pinID_slack_Qvec = getSlack2ConnectedFF(i + _FF_Q_OFFSET);
+
+        if (fo_pinID_slack_Qvec.size() != 0)
+        {
+            bool Q_break = 0;
+
+            for (size_t j = 0; j < fo_pinID_slack_Qvec.size(); j++)
+            {
+                _FF_Q_arr.at(i).Q_fanout_pos.push_back(findPinPosition(fo_pinID_slack_Qvec.at(j).first));
+
+                double fo_x_r = _FF_Q_arr.at(i).Q_fanout_pos.at(j).second + _FF_Q_arr.at(i).Q_fanout_pos.at(j).first - 2 * dist; // x'=y+x //Q shift left
+                double fo_y_r = _FF_Q_arr.at(i).Q_fanout_pos.at(j).second - _FF_Q_arr.at(i).Q_fanout_pos.at(j).first + 2 * dist; // y'=y-x
+
+                double s = fo_pinID_slack_Qvec.at(j).second;
+
+                double Q_dia_len = fabs(_FF_Q_arr.at(i).Qx_pos - _FF_Q_arr.at(i).Q_fanout_pos.at(j).first) + fabs(_FF_Q_arr.at(i).Qy_pos - _FF_Q_arr.at(i).Q_fanout_pos.at(j).second) + s / (_ptr_Parser->_displaceDelay);
+                if (Q_dia_len < 0)
+                {
+                    _FF_D_arr[i].hasfeasible = 0;
+                    Q_break = 1;
+                    break;
+                }
+
+                coor_w_se Qx_s, Qx_e;
+                Qx_s.pos_val = fo_x_r - (Q_dia_len);
+                Qx_s.type = 0;
+                Qx_s.or_ind = j + 1;
+                Qx_e.pos_val = fo_x_r + (Q_dia_len);
+                Qx_e.type = 1;
+                Qx_e.or_ind = j + 1;
+
+                dia_x_arr.push_back(Qx_s);
+                dia_x_arr.push_back(Qx_e);
+
+                coor_w_se Qy_s, Qy_e;
+                Qy_s.pos_val = fo_y_r - (Q_dia_len);
+                Qy_s.type = 0;
+                Qy_s.or_ind = j + 1;
+                Qy_e.pos_val = fo_y_r + (Q_dia_len);
+                Qy_e.type = 1;
+                Qy_e.or_ind = j + 1;
+
+                dia_y_arr.push_back(Qy_s);
+                dia_y_arr.push_back(Qy_e);
+            }
+            if (Q_break == 1)
+            {
+                continue;
+            }
+        }
+
+        // draw feasible by using dia_x_arr, dia_y_arr
+        // 對 dia_x_arr 排序
+        std::sort(dia_x_arr.begin(), dia_x_arr.end(), compareByPosVal);
+
+        // 對 dia_y_arr 排序
+        std::sort(dia_y_arr.begin(), dia_y_arr.end(), compareByPosVal);
+
+        int target_x;
+        int bound_ctr_x = 0;
+        for (size_t k = 1; k < dia_x_arr.size(); k++)
+        {
+            if ((dia_x_arr.at(k).type == 1) && (dia_x_arr.at(k - 1).type == 0))
+            {
+                target_x = k;
+                bound_ctr_x++;
+            }
+        }
+
+        int target_y;
+        int bound_ctr_y = 0;
+        for (size_t k = 1; k < dia_y_arr.size(); k++)
+        {
+            if ((dia_y_arr.at(k).type == 1) && (dia_y_arr.at(k - 1).type == 0))
+            {
+                target_y = k;
+                bound_ctr_y++;
+            }
+        }
+
+        if ((bound_ctr_x != 1) || (bound_ctr_y != 1))
+        {
+            // no feasible
+
+            _FF_D_arr.at(i).hasfeasible = 0;
+        }
+        else
+        {
+            // feasible
+
+            _FF_D_arr.at(i).hasfeasible = 1;
+
+            _FF_D_arr.at(i).fea_x_s.type = 0;
+            _FF_D_arr.at(i).fea_x_s.pos_val = dia_x_arr.at(target_x - 1).pos_val;
+            _FF_D_arr.at(i).fea_x_s.FF_id = i;
+
+            _FF_D_arr.at(i).fea_x_e.type = 1;
+            _FF_D_arr.at(i).fea_x_e.pos_val = dia_x_arr.at(target_x).pos_val;
+            _FF_D_arr.at(i).fea_x_e.FF_id = i;
+
+            _FF_D_arr.at(i).fea_y_s.type = 0;
+            _FF_D_arr.at(i).fea_y_s.pos_val = dia_y_arr.at(target_y - 1).pos_val;
+            _FF_D_arr.at(i).fea_y_s.FF_id = i;
+
+            _FF_D_arr.at(i).fea_y_e.type = 1;
+            _FF_D_arr.at(i).fea_y_e.pos_val = dia_y_arr.at(target_y).pos_val;
+            _FF_D_arr.at(i).fea_y_e.FF_id = i;
+        }
+    }
+
+    // std::cout << "findfeasible is completed" << std::endl;
+}
+
+void Solver::Solver::feasible_cal(const vector<size_t> &final_group, const size_t &k, double &w, double &w_r, double &h, double &h_u)
 {
 
     ////faninCone
@@ -833,8 +1005,9 @@ void Solver::Solver::feasible_cal(const vector<size_t> &final_group, const size_
         for (size_t kk = 0; kk < ptr_FF_D->faninCone.size(); kk++)
         {
             size_t FFid = ptr_FF_D->faninCone[kk] - _FF_Q_OFFSET;
+            bool renew = FFinwindow(&_FF_D_arr[FFid], w, w_r, h, h_u);
 
-            if (_FF_D_arr[FFid].grouped == false && _FF_D_arr[FFid].getClk() == k) // if the slack release to the grouped FF, what should i do ?
+            if (_FF_D_arr[FFid].grouped == false && _FF_D_arr[FFid].getClk() == k && renew == 1) // if the slack release to the grouped FF, what should i do ?
             {
 
                 double dist = (_FF_Q_arr.at(FFid).Qx_pos - _FF_D_arr.at(FFid).Dx_pos) * 0.5;
@@ -1013,15 +1186,9 @@ void Solver::Solver::feasible_cal(const vector<size_t> &final_group, const size_
         for (size_t kk = 0; kk < ptr_FF_Q->fanoutCone.size(); kk++)
         {
             size_t FFid = ptr_FF_Q->fanoutCone[kk] - _FF_D_OFFSET;
-            // std::cout << "FFID: " << FFid << std::endl;
-            // && (_FF_D_arr[FFid].getClk() == k || _FF_D_arr[FFid].getClk() == k+1 || _FF_D_arr[FFid].getClk() == k+2)
-            bool renew;
-            if (_FF_D_arr[FFid].getClk() == k)
-            {
-                renew == true;
-            }
+            bool renew = FFinwindow(&_FF_D_arr[FFid], w, w_r, h, h_u);
 
-            if (_FF_D_arr[FFid].grouped == false && renew == true) // if the slack release to the grouped FF, what should i do ?
+            if (_FF_D_arr[FFid].grouped == false && _FF_D_arr[FFid].getClk() == k && renew == true) // if the slack release to the grouped FF, what should i do ?
             {
 
                 double dist = (_FF_Q_arr.at(FFid).Qx_pos - _FF_D_arr.at(FFid).Dx_pos) * 0.5;
@@ -1327,18 +1494,18 @@ void Solver::Solver::drawpic(const string &s)
 void Solver::Solver::solve_by_window()
 {
     evaluate("init Metrix.txt");
-    // drawpic("pic_init.plt");
+    drawpic("pic_init.plt");
 
     solve_initbuild();
-    solve_findfeasible();
+    // solve_findfeasible();
 
     std::map<size_t, size_t> MBFFSfinal;
 
     double width = _ptr_Parser->_dieRx - _ptr_Parser->_dieLx;
     double height = _ptr_Parser->_dieRy - _ptr_Parser->_dieLy;
     /////////////////////////////////////////////////////////////change the parameters
-    int slice = 25;
-    bool corner = false;
+    int slice = 50;
+    double low_weight = 0.1;
     ////////////////////////////////////////////////////////////
 
     double window_w = width / slice;
@@ -1363,22 +1530,27 @@ void Solver::Solver::solve_by_window()
         FF_inwindow[x][y].push_back(id);
     }
 
+    /*
     vector<size_t> FF_remain; // store the remain ff index
     FF_remain.reserve(_FF_D_arr.size() + 1);
-    std::map<size_t, size_t> val_idxmap; // {FF_D_index: FF_remain_idx}
+    std::unordered_map<size_t, size_t> val_idxmap; // {FF_D_index: FF_remain_idx}
+    */
 
     for (int m = 0; m < slice; m++)
     {
         for (int n = 0; n < slice; n++)
         {
             vector<vector<Inst::feasible_coor>> CLKtofeas_x(_ClkList.size());
+            // calculate the feasible
+            windowbinfeasible(FF_inwindow[m][n]);
+
             for (int c = 0; c < FF_inwindow[m][n].size(); c++)
             {
                 size_t ffid = FF_inwindow[m][n][c];
                 // std::cout << "FFD.size: " << _FF_D_arr.size() << std::endl;
                 // std::cout << "ffid: " << ffid << std::endl;
                 // std::cout << "CLK: " << _FF_D_arr[ffid].getClk()<< std::endl;
-                if (_FF_D_arr[ffid].getClk() < _ClkList.size() && _FF_D_arr[ffid].hasfeasible == 1)
+                if (_FF_D_arr[ffid].hasfeasible == 1) //_FF_D_arr[ffid].getClk() < _ClkList.size() &&
                 {
                     CLKtofeas_x.at(_FF_D_arr[ffid].getClk()).push_back(_FF_D_arr[ffid].fea_x_s);
                     CLKtofeas_x[_FF_D_arr[ffid].getClk()].push_back(_FF_D_arr[ffid].fea_x_e);
@@ -1399,7 +1571,6 @@ void Solver::Solver::solve_by_window()
                 {
                     vector<size_t> ff_group;
 
-                    // std::cout << "Before clustering, the size: " << feas_x_clk.size() << std::endl;
                     for (int i = 1; i < feas_x_clk.size(); i++)
                     {
 
@@ -1423,86 +1594,30 @@ void Solver::Solver::solve_by_window()
 
                             // preplace and slack release
                             pair<double, double> pos;
-                            pos.first = (x_pos_r.first + x_pos_r.second) * 0.5; // choose the middle point
-                            pos.second = (y_pos_r.first + y_pos_r.second) * 0.5;
-                            double x_ori = pos.first;
-                            double y_ori = pos.second;
+                            double x_ori = (x_pos_r.first + x_pos_r.second) * 0.5; // choose the middle point
+                            double y_ori = (y_pos_r.first + y_pos_r.second) * 0.5;
                             // change to original coordinate (x'=y+x, y'=y-x)
                             pos.first = (x_ori - y_ori) * 0.5;  // x=(x'-y')/2
                             pos.second = (x_ori + y_ori) * 0.5; // y=(x'+y')/2
                             // std::cout << "real feasible center" << pos.first << " ," << pos.second << std::endl;
+
+                            pair<double, double> lowest_pos; // left lower of rotate coor
+                            x_ori = x_pos_r.first;
+                            y_ori = y_pos_r.second;
+                            lowest_pos.first = (x_ori - y_ori) * 0.5;  // x=(x'-y')/2
+                            lowest_pos.second = (x_ori + y_ori) * 0.5; // y=(x'+y')/2
 
                             double w = m * window_w;
                             double w_r = (m + 1) * window_w;
                             double h = n * window_h;
                             double h_u = (n + 1) * window_h;
 
-                            if (corner == true)
-                            {
-                                if (pos.first >= w && pos.first <= w_r && pos.second >= h && pos.second <= h_u)
-                                {
-                                    final_group = prePlace(result_group, esssential_ff, pos);
-                                    std::cout << "----------In the square !!!----------" << std::endl;
-                                }
-                                else
-                                {
-                                    double disLL = fabs(pos.first - w) + fabs(pos.second - h);
-                                    double disLR = fabs(pos.first - w_r) + fabs(pos.second - h);
-                                    double disUL = fabs(pos.first - w) + fabs(pos.second - h_u);
-                                    double disUR = fabs(pos.first - w_r) + fabs(pos.second - h_u);
-                                    double min = disLL;
-                                    if (disLR < min)
-                                    {
-                                        min = disLR;
-                                    }
-                                    if (disUL < min)
-                                    {
-                                        min = disUL;
-                                    }
-                                    if (disUR < min)
-                                    {
-                                        min = disUR;
-                                    }
+                            pair<double, double> decision_pos;
+                            decision_pos.first = (low_weight) * (lowest_pos.first) + (1 - low_weight) * (pos.first);
+                            decision_pos.second = (low_weight) * (lowest_pos.second) + (1 - low_weight) * (pos.second);
 
-                                    if (min == disLL)
-                                    {
-                                        pos.first = w;
-                                        pos.second = h;
-                                        std::cout << "xxxxxxxxxxput on LL !!!xxxxxxxxxx" << std::endl;
-                                        std::cout << "corner of window: " << pos.first << " ," << pos.second << std::endl;
-                                        final_group = prePlace(result_group, esssential_ff, pos);
-                                    }
-                                    else if (min == disLR)
-                                    {
-                                        pos.first = w_r;
-                                        pos.second = h;
-                                        std::cout << "xxxxxxxxxxput on LR !!!xxxxxxxxxx" << std::endl;
-                                        std::cout << "corner of window: " << pos.first << " ," << pos.second << std::endl;
-                                        final_group = prePlace(result_group, esssential_ff, pos);
-                                    }
-                                    else if (min == disUL)
-                                    {
-                                        pos.first = w;
-                                        pos.second = h_u;
-                                        std::cout << "xxxxxxxxxxput on UL !!!xxxxxxxxxx" << std::endl;
-                                        std::cout << "corner of window: " << pos.first << " ," << pos.second << std::endl;
-                                        final_group = prePlace(result_group, esssential_ff, pos);
-                                    }
-                                    else
-                                    {
-                                        pos.first = w_r;
-                                        pos.second = h_u;
-                                        std::cout << "xxxxxxxxxxput on UR !!!xxxxxxxxxx" << std::endl;
-                                        std::cout << "corner of window: " << pos.first << " ," << pos.second << std::endl;
-                                        final_group = prePlace(result_group, esssential_ff, pos);
-                                    }
-                                }
-                            }
-                            else
-                            {
-
-                                final_group = prePlace(result_group, esssential_ff, pos);
-                            }
+                            final_group = prePlace(result_group, esssential_ff, pos);
+                            // std::cout << "finalgroupsize: " << final_group.size() << std::endl;
 
                             auto it2 = MBFFSfinal.find(final_group.size());
                             if (it2 == MBFFSfinal.end())
@@ -1513,22 +1628,27 @@ void Solver::Solver::solve_by_window()
                             {
                                 MBFFSfinal.at(final_group.size()) += 1;
                             }
-
-                            feasible_cal(final_group, k);
+                            // std::cout << "before feasible" << std::endl;
+                            //  feasible_cal(final_group, k, w, w_r, h, h_u);
+                            windowbinfeasible(FF_inwindow[m][n]);
+                            // std::cout << "after feasiblel" << std::endl;
 
                             break;
                         }
                     }
 
                     // delete the grouped member in feas_x_clk
-                    for (size_t i = 0; i < feas_x_clk.size(); i++)
+
+                    for (size_t ii = 0; ii < feas_x_clk.size(); ii++)
                     {
+                        // std::cout << "A: " << feas_x_clk.at(ii).FF_id << " ," << _FF_D_arr[feas_x_clk.at(ii).FF_id].grouped << std::endl;
+
                         // std::cout << "FF" << feas_x_clk.at(i).FF_id << " group or not: " << _FF_D_arr[feas_x_clk.at(i).FF_id].grouped << std::endl;
-                        if (_FF_D_arr[feas_x_clk.at(i).FF_id].grouped == 1)
+                        if (_FF_D_arr[feas_x_clk.at(ii).FF_id].grouped == 1)
                         {
 
-                            feas_x_clk.erase(feas_x_clk.begin() + i);
-                            i = i - 1;
+                            feas_x_clk.erase(feas_x_clk.begin() + ii);
+                            ii = ii - 1;
                         }
                     }
                 }
@@ -1537,7 +1657,7 @@ void Solver::Solver::solve_by_window()
 
             // string s = std::to_string(10 * w / window_w + h / window_h);
             // drawpic("pic_" + s + ".plt");
-            std::cout << "M N = " << m << " " << n << std::endl;
+            std::cout << "M:" << m << " N:" << n << std::endl;
         }
     }
 
@@ -1555,11 +1675,11 @@ void Solver::Solver::solve_by_window()
         std::cout << pair.first << ": " << pair.second << std::endl;
     }
 
-    // drawpic("pic_e.plt");
+    drawpic("pic_e.plt");
     evaluate("before legal Metrix.txt");
     legalize();
     evaluate("after legal Metrix.txt");
-    // drawpic("pic_final.plt");
+    drawpic("pic_final.plt");
     std::cout << "Solver is completed !" << std::endl;
 }
 
@@ -1672,69 +1792,18 @@ void Solver::Solver::test()
     solve_findfeasible();
     _ptr_evaluator->setSolverPtr(this);
 
-    size_t ctr = 0;
-    // test for FF18832
+    std::cout << "test size: " << _ID_to_instance[1011197]->getRelatedNet().size() << std::endl;
+    std::cout << "FFDOFFSET: " << _FF_D_OFFSET << std::endl;
+    std::cout << "FFDsize: " << _FF_D_arr.size() << std::endl;
+    assert(_ID_to_instance[1011197]->getType() == Inst::INST_FF_D);
 
     for (int i = 0; i < _FF_D_arr.size(); i++)
     {
-
-        ctr++;
-        // double slack_ori = _ptr_evaluator->calSlack4FF(&_FF_D_arr[i]);
-        vector<size_t> ff_group;
-        ff_group.push_back(i + _FF_D_OFFSET);
-
-        double x_r = _FF_D_arr[i].fea_x_e.pos_val;
-        double y_r = _FF_D_arr[i].fea_y_s.pos_val;
-        pair<double, double> pos;
-        pos.first = (x_r - y_r) * 0.5;
-        pos.second = (x_r + y_r) * 0.5;
-
-        // pair<double, double> fanoutpos = findPinPosition(getSlack2ConnectedFF(i + _FF_Q_OFFSET).at(0).first);
-
-        // prePlace(ff_group, i + _FF_D_OFFSET, pos);
-        setFFPosition(&_FF_D_arr[i], pos);
-        // double slack = _ptr_evaluator->calSlack4FF(&_FF_D_arr[i]);
-
-        feasible_cal(ff_group, 0); // k para need to change back
-
-        /*if (slack < 0)
+        if (_ID_to_instance[i + _FF_D_OFFSET]->getRelatedNet().size() == 0)
         {
-            std::cout << "slack_ori " << i << " : " << slack_ori << std::endl;
-            std::cout << "slack " << i << " : " << slack << std::endl;
-        }*/
+            std::cout << "FF_" << i << ", id: " << i + _FF_D_OFFSET << " size: " << _ID_to_instance[i + _FF_D_OFFSET]->getRelatedNet().size() << std::endl;
+        }
     }
-    // std::cout << "num of 1 fanout FF: " << ctr << std::endl;
-    evaluate("test Metrix.txt");
-
-    /*
-     vector<size_t> ff_group;
-     size_t k = 18832;
-     ff_group.push_back(k + _FF_D_OFFSET);
-
-     std::cout << "faninsize: " << _FF_D_arr[k].faninCone.size() << std::endl;
-     std::cout << "fanoutsize: " << _FF_Q_arr[k].fanoutCone.size() << std::endl;
-     std::cout << "faninpos: " << findPinPosition(getSlack2ConnectedFF(k + _FF_D_OFFSET).at(0).first).first << " ," << findPinPosition(getSlack2ConnectedFF(k + _FF_D_OFFSET).at(0).first).second << std::endl;
-     std::cout << "FFpos: " << getFFPosition(&_FF_D_arr[k]).first << " ," << getFFPosition(&_FF_D_arr[k]).second << std::endl;
-     std::cout << "Dpin_pos: " << findPinPosition(k + _FF_D_OFFSET).first << " ," << findPinPosition(k + _FF_D_OFFSET).second << std::endl;
-     std::cout << "slack: " << getSlack2ConnectedFF(k + _FF_D_OFFSET).at(0).second << std::endl;
-     double x_r = _FF_D_arr[k].fea_x_e.pos_val;
-     double y_r = _FF_D_arr[k].fea_y_s.pos_val;
-     pair<double, double> pos;
-     pos.first = (x_r - y_r) * 0.5;
-     pos.second = (x_r + y_r) * 0.5;
-     std::cout << "D pin rightmost pos caculated by feasible: " << pos.first << " ," << pos.second << std::endl;
-     prePlace(ff_group, k + _FF_D_OFFSET, pos);
-     std::cout << "FF Dpin final pos: " << findPinPosition(k + _FF_D_OFFSET).first << " ," << findPinPosition(k + _FF_D_OFFSET).second << std::endl;
-     double slack = _ptr_evaluator->calSlack4FF(&_FF_D_arr[k]);
-     std::cout << "FF_" << k << " slack " << " : " << slack << std::endl;
-     std::cout << "maxSlack: " << _FF_D_arr[k].maxSlack << std::endl;
-     // evaluate("test Metrix.txt");
-     */
-
-    /*// STA test
-    size_t in = _Name_to_ID.at("C9/IN");
-    size_t out = _Name_to_ID.at("C12/OUT");
-    std::cout << _ptr_STAEngine->getDistance(in, out) << std::endl;*/
 }
 
 vector<size_t> Solver::Solver::prePlace(const vector<size_t> &ff_group, size_t essential_ID, pair<double, double> pos)
