@@ -339,6 +339,53 @@ void Solver::Solver::initSolver()
     std::cout << "step9: calculate the Max slack for every FF" << std::endl;
     findMaxSlack();
 
+    // step10: evaluate the "grade" for ff library
+    std::cout << "step10: evaluate the \"grade\" for ff library" << std::endl;
+    _libGrade.clear();
+    _libGrade.reserve(_ptr_Parser->_flipflopLib.size());
+    double QpinOffset = 0;
+    double oneBitNum = 0;
+    int maxBit = 0;
+    double maxBitNum = 0;
+    for (size_t i = 0; i < _ptr_Parser->_flipflopLib.size(); i++)
+    {
+        if (_ptr_Parser->_flipflopLib.at(i).Bit == 1)
+        {
+            oneBitNum += 1;
+            QpinOffset += _ptr_Parser->_flipflopLib.at(i).PinDelay;
+        }
+        if (_ptr_Parser->_flipflopLib.at(i).Bit > maxBit)
+        {
+            maxBit = _ptr_Parser->_flipflopLib.at(i).Bit;
+        }
+    }
+    QpinOffset = QpinOffset / oneBitNum;
+    for (size_t i = 0; i < _ptr_Parser->_flipflopLib.size(); i++)
+    {
+        struct libGrade init;
+        init.aspectRatio = _ptr_Parser->_flipflopLib.at(i).Hight / _ptr_Parser->_flipflopLib.at(i).Width;
+        init.QpinEffect = _ptr_Parser->_flipflopLib.at(i).PinDelay - QpinOffset;
+        double area = _ptr_Parser->_flipflopLib.at(i).Hight * _ptr_Parser->_flipflopLib.at(i).Width;
+        init.avgCost = (_ptr_Parser->_beta * _ptr_Parser->_flipflopLib.at(i).Power) + (_ptr_Parser->_gamma * area);
+        init.avgCost = (init.avgCost / double(_ptr_Parser->_flipflopLib.at(i).Bit)) + (_ptr_Parser->_alpha * init.QpinEffect);
+        _libGrade.push_back(init);
+    }
+    for (size_t i = 0; i < _ptr_Parser->_flipflopLib.size(); i++)
+    {
+        if (_ptr_Parser->_flipflopLib.at(i).Bit == maxBit)
+        {
+            maxBitNum += 1;
+        }
+    }
+    _avgQpinDelayDiff = 0;
+    for (size_t i = 0; i < _ptr_Parser->_flipflopLib.size(); i++)
+    {
+        if (_ptr_Parser->_flipflopLib.at(i).Bit == maxBit)
+        {
+            _avgQpinDelayDiff += _libGrade.at(i).QpinEffect / maxBitNum;
+        }
+    }
+
     std::cout << "End initialization!!! \n"
               << std::endl;
 }
@@ -1280,7 +1327,7 @@ void Solver::Solver::drawpic(const string &s)
 void Solver::Solver::solve_by_window()
 {
     evaluate("init Metrix.txt");
-    //drawpic("pic_init.plt");
+    // drawpic("pic_init.plt");
 
     solve_initbuild();
     solve_findfeasible();
@@ -1318,7 +1365,7 @@ void Solver::Solver::solve_by_window()
 
     vector<size_t> FF_remain; // store the remain ff index
     FF_remain.reserve(_FF_D_arr.size() + 1);
-    std::unordered_map<size_t, size_t> val_idxmap; // {FF_D_index: FF_remain_idx}
+    std::map<size_t, size_t> val_idxmap; // {FF_D_index: FF_remain_idx}
 
     for (int m = 0; m < slice; m++)
     {
@@ -1485,12 +1532,12 @@ void Solver::Solver::solve_by_window()
                         }
                     }
                 }
-                //std::cout << "CLKlist " << k << " is finished" << std::endl;
+                // std::cout << "CLKlist " << k << " is finished" << std::endl;
             }
 
             // string s = std::to_string(10 * w / window_w + h / window_h);
             // drawpic("pic_" + s + ".plt");
-            std::cout<< "M N = "<<m<<" " << n << std::endl;
+            std::cout << "M N = " << m << " " << n << std::endl;
         }
     }
 
@@ -1508,11 +1555,11 @@ void Solver::Solver::solve_by_window()
         std::cout << pair.first << ": " << pair.second << std::endl;
     }
 
-    //drawpic("pic_e.plt");
+    // drawpic("pic_e.plt");
     evaluate("before legal Metrix.txt");
     legalize();
     evaluate("after legal Metrix.txt");
-    //drawpic("pic_final.plt");
+    // drawpic("pic_final.plt");
     std::cout << "Solver is completed !" << std::endl;
 }
 
@@ -1703,7 +1750,6 @@ vector<size_t> Solver::Solver::prePlace(const vector<size_t> &ff_group, size_t e
     //  step1: choose the ff size from ff lib
     int maxSize = 0;
     size_t fftype = 0;
-    double area = 0;
     // here we choose the first FF with largest available size in the ff lib
     for (size_t i = 0; i < _ptr_Parser->_flipflopLib.size(); i++)
     {
@@ -1711,12 +1757,10 @@ vector<size_t> Solver::Solver::prePlace(const vector<size_t> &ff_group, size_t e
         {
             maxSize = _ptr_Parser->_flipflopLib[i].Bit;
             fftype = i;
-            area = _ptr_Parser->_flipflopLib[i].Hight * _ptr_Parser->_flipflopLib[i].Width;
         }
-        if (_ptr_Parser->_flipflopLib[i].Bit == maxSize && area > _ptr_Parser->_flipflopLib[i].Hight * _ptr_Parser->_flipflopLib[i].Width)
+        if (_ptr_Parser->_flipflopLib[i].Bit == maxSize && _libGrade.at(fftype).avgCost >= _libGrade.at(i).avgCost)
         {
             fftype = i;
-            area = _ptr_Parser->_flipflopLib[i].Hight * _ptr_Parser->_flipflopLib[i].Width;
         }
     }
     assert(maxSize > 0);
@@ -2256,7 +2300,7 @@ vector<pair<size_t, double>> Solver::Solver::getSlack2ConnectedFF(const size_t &
                 else
                 {
                     // if is not grouped give half slack to FF_D
-                    s = (_FF_D_arr[id - _FF_D_OFFSET].maxSlack - (distance * _ptr_Parser->_displaceDelay)) / 2;
+                    s = (_FF_D_arr[id - _FF_D_OFFSET].maxSlack - (distance * _ptr_Parser->_displaceDelay)) / 2 - _avgQpinDelayDiff;
                 }
 
                 if (s < slackRemain)
@@ -2283,7 +2327,7 @@ vector<pair<size_t, double>> Solver::Solver::getSlack2ConnectedFF(const size_t &
                 else
                 {
                     // if is not grouped give half slack to FF_D
-                    s = (_FF_D_arr[id - _FF_D_OFFSET].maxSlack - (distance * _ptr_Parser->_displaceDelay)) / 2;
+                    s = (_FF_D_arr[id - _FF_D_OFFSET].maxSlack - (distance * _ptr_Parser->_displaceDelay)) / 2 - _avgQpinDelayDiff;
                 }
 
                 if (s < slackRemain)
@@ -2347,7 +2391,7 @@ vector<pair<size_t, double>> Solver::Solver::getSlack2ConnectedFF(const size_t &
                 FFPos = _FF_Q_arr[id - _FF_Q_OFFSET].getPosition();
                 distance += (std::fabs(gatePos.first - FFPos.first) + std::fabs(gatePos.second - FFPos.second));
                 // add the effect of Qpin delay
-                distance += (_ptr_Parser->_flipflopLib[_FF_Q_arr[id - _FF_Q_OFFSET].FF_type].PinDelay) / _ptr_Parser->_displaceDelay;
+                distance += ((_ptr_Parser->_flipflopLib[_FF_Q_arr[id - _FF_Q_OFFSET].FF_type].PinDelay) / _ptr_Parser->_displaceDelay);
 
                 // check whether the connected FF has been grouped
                 if (_FF_D_arr[_FF_Q_arr[id - _FF_Q_OFFSET].fanoutCone[i] - _FF_D_OFFSET].grouped)

@@ -29,6 +29,12 @@ namespace Solver
         double siteHight;
         double totalNumOfSites;
     };
+    struct libGrade
+    {
+        double avgCost;
+        double aspectRatio;
+        double QpinEffect; // the Qpindelay - the average QpinDelay of 1 bit FF
+    };
     class STAEngine;    // forward declaration
     class legalizer;    // forward declaration
     class evaluator;    // forward declaration
@@ -93,6 +99,8 @@ namespace Solver
         vector<vector<vector<size_t>>> _Gate_in_Bin; // inside is the position in _Gate_arr, rather than ID of gate
         vector<vector<vector<size_t>>> _FF_in_Bin;   // only record FF_D
         vector<vector<vector<size_t>>> _PlaceRow_in_Bin;
+        vector<struct libGrade> _libGrade;
+        double _avgQpinDelayDiff;
 
         // function part
         vector<size_t> prePlace(const vector<FF_D_ID> &, size_t, pair<double, double>); // return the FF_D_ID be grouped

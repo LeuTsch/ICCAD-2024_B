@@ -1,0 +1,1852 @@
+start to read file: ./testcase/testcase1_0812.txt
+read file successfully!
+Time for read file: 102482 sec
+start to initialize solver
+step1: realize the instance for PIO, ff, and Gate,and assign ID
+step2: establish Net
+step3: initialize the STA engine
+step4: update the slack for the pin, and distribute slack
+step5: init the placement row
+step6: categorize instance to the bin
+step7: establish the fanin and fanout cone for the FF
+step8: initialize the legalizer
+step9: calculate the Max slack for every FF
+step10: evaluate the "grade" for ff library
+End initialization!!! 
+
+Time for initialize solver: 5882158 sec
+initbuild is completed
+findfeasible is completed
+time for finding feasible: 2
+M N = 0 0
+M N = 0 1
+M N = 0 2
+M N = 0 3
+M N = 0 4
+M N = 0 5
+M N = 0 6
+M N = 0 7
+M N = 0 8
+M N = 0 9
+M N = 0 10
+M N = 0 11
+M N = 0 12
+M N = 0 13
+M N = 0 14
+M N = 0 15
+M N = 0 16
+M N = 0 17
+M N = 0 18
+M N = 0 19
+M N = 0 20
+M N = 0 21
+M N = 0 22
+M N = 0 23
+M N = 0 24
+M N = 1 0
+M N = 1 1
+M N = 1 2
+M N = 1 3
+M N = 1 4
+M N = 1 5
+M N = 1 6
+M N = 1 7
+M N = 1 8
+M N = 1 9
+M N = 1 10
+M N = 1 11
+M N = 1 12
+M N = 1 13
+M N = 1 14
+M N = 1 15
+M N = 1 16
+M N = 1 17
+M N = 1 18
+M N = 1 19
+M N = 1 20
+M N = 1 21
+M N = 1 22
+M N = 1 23
+M N = 1 24
+M N = 2 0
+M N = 2 1
+M N = 2 2
+M N = 2 3
+M N = 2 4
+M N = 2 5
+M N = 2 6
+M N = 2 7
+M N = 2 8
+M N = 2 9
+M N = 2 10
+M N = 2 11
+M N = 2 12
+M N = 2 13
+M N = 2 14
+M N = 2 15
+M N = 2 16
+M N = 2 17
+M N = 2 18
+M N = 2 19
+M N = 2 20
+M N = 2 21
+M N = 2 22
+M N = 2 23
+M N = 2 24
+M N = 3 0
+M N = 3 1
+M N = 3 2
+M N = 3 3
+M N = 3 4
+M N = 3 5
+M N = 3 6
+M N = 3 7
+M N = 3 8
+M N = 3 9
+M N = 3 10
+M N = 3 11
+M N = 3 12
+M N = 3 13
+M N = 3 14
+M N = 3 15
+M N = 3 16
+M N = 3 17
+M N = 3 18
+M N = 3 19
+M N = 3 20
+M N = 3 21
+M N = 3 22
+M N = 3 23
+M N = 3 24
+M N = 4 0
+M N = 4 1
+M N = 4 2
+M N = 4 3
+M N = 4 4
+M N = 4 5
+M N = 4 6
+M N = 4 7
+M N = 4 8
+M N = 4 9
+M N = 4 10
+M N = 4 11
+M N = 4 12
+M N = 4 13
+M N = 4 14
+M N = 4 15
+M N = 4 16
+M N = 4 17
+M N = 4 18
+M N = 4 19
+M N = 4 20
+M N = 4 21
+M N = 4 22
+M N = 4 23
+M N = 4 24
+M N = 5 0
+M N = 5 1
+M N = 5 2
+M N = 5 3
+M N = 5 4
+M N = 5 5
+M N = 5 6
+M N = 5 7
+M N = 5 8
+M N = 5 9
+M N = 5 10
+M N = 5 11
+M N = 5 12
+M N = 5 13
+M N = 5 14
+M N = 5 15
+M N = 5 16
+M N = 5 17
+M N = 5 18
+M N = 5 19
+M N = 5 20
+M N = 5 21
+M N = 5 22
+M N = 5 23
+M N = 5 24
+M N = 6 0
+M N = 6 1
+M N = 6 2
+M N = 6 3
+M N = 6 4
+M N = 6 5
+M N = 6 6
+M N = 6 7
+M N = 6 8
+M N = 6 9
+M N = 6 10
+M N = 6 11
+M N = 6 12
+M N = 6 13
+M N = 6 14
+M N = 6 15
+M N = 6 16
+M N = 6 17
+M N = 6 18
+M N = 6 19
+M N = 6 20
+M N = 6 21
+M N = 6 22
+M N = 6 23
+M N = 6 24
+M N = 7 0
+M N = 7 1
+M N = 7 2
+M N = 7 3
+M N = 7 4
+M N = 7 5
+M N = 7 6
+M N = 7 7
+M N = 7 8
+M N = 7 9
+M N = 7 10
+M N = 7 11
+M N = 7 12
+M N = 7 13
+M N = 7 14
+M N = 7 15
+M N = 7 16
+M N = 7 17
+M N = 7 18
+M N = 7 19
+M N = 7 20
+M N = 7 21
+M N = 7 22
+M N = 7 23
+M N = 7 24
+M N = 8 0
+M N = 8 1
+M N = 8 2
+M N = 8 3
+M N = 8 4
+M N = 8 5
+M N = 8 6
+M N = 8 7
+M N = 8 8
+M N = 8 9
+M N = 8 10
+M N = 8 11
+M N = 8 12
+M N = 8 13
+M N = 8 14
+M N = 8 15
+M N = 8 16
+M N = 8 17
+M N = 8 18
+M N = 8 19
+M N = 8 20
+M N = 8 21
+M N = 8 22
+M N = 8 23
+M N = 8 24
+M N = 9 0
+M N = 9 1
+M N = 9 2
+M N = 9 3
+M N = 9 4
+M N = 9 5
+M N = 9 6
+M N = 9 7
+M N = 9 8
+M N = 9 9
+M N = 9 10
+M N = 9 11
+M N = 9 12
+M N = 9 13
+M N = 9 14
+M N = 9 15
+M N = 9 16
+M N = 9 17
+M N = 9 18
+M N = 9 19
+M N = 9 20
+M N = 9 21
+M N = 9 22
+M N = 9 23
+M N = 9 24
+M N = 10 0
+M N = 10 1
+M N = 10 2
+M N = 10 3
+M N = 10 4
+M N = 10 5
+M N = 10 6
+M N = 10 7
+M N = 10 8
+M N = 10 9
+M N = 10 10
+M N = 10 11
+M N = 10 12
+M N = 10 13
+M N = 10 14
+M N = 10 15
+M N = 10 16
+M N = 10 17
+M N = 10 18
+M N = 10 19
+M N = 10 20
+M N = 10 21
+M N = 10 22
+M N = 10 23
+M N = 10 24
+M N = 11 0
+M N = 11 1
+M N = 11 2
+M N = 11 3
+M N = 11 4
+M N = 11 5
+M N = 11 6
+M N = 11 7
+M N = 11 8
+M N = 11 9
+M N = 11 10
+M N = 11 11
+M N = 11 12
+M N = 11 13
+M N = 11 14
+M N = 11 15
+M N = 11 16
+M N = 11 17
+M N = 11 18
+M N = 11 19
+M N = 11 20
+M N = 11 21
+M N = 11 22
+M N = 11 23
+M N = 11 24
+M N = 12 0
+M N = 12 1
+M N = 12 2
+M N = 12 3
+M N = 12 4
+M N = 12 5
+M N = 12 6
+M N = 12 7
+M N = 12 8
+M N = 12 9
+M N = 12 10
+M N = 12 11
+M N = 12 12
+M N = 12 13
+M N = 12 14
+M N = 12 15
+M N = 12 16
+M N = 12 17
+M N = 12 18
+M N = 12 19
+M N = 12 20
+M N = 12 21
+M N = 12 22
+M N = 12 23
+M N = 12 24
+M N = 13 0
+M N = 13 1
+M N = 13 2
+M N = 13 3
+M N = 13 4
+M N = 13 5
+M N = 13 6
+M N = 13 7
+M N = 13 8
+M N = 13 9
+M N = 13 10
+M N = 13 11
+M N = 13 12
+M N = 13 13
+M N = 13 14
+M N = 13 15
+M N = 13 16
+M N = 13 17
+M N = 13 18
+M N = 13 19
+M N = 13 20
+M N = 13 21
+M N = 13 22
+M N = 13 23
+M N = 13 24
+M N = 14 0
+M N = 14 1
+M N = 14 2
+M N = 14 3
+M N = 14 4
+M N = 14 5
+M N = 14 6
+M N = 14 7
+M N = 14 8
+M N = 14 9
+M N = 14 10
+M N = 14 11
+M N = 14 12
+M N = 14 13
+M N = 14 14
+M N = 14 15
+M N = 14 16
+M N = 14 17
+M N = 14 18
+M N = 14 19
+M N = 14 20
+M N = 14 21
+M N = 14 22
+M N = 14 23
+M N = 14 24
+M N = 15 0
+M N = 15 1
+M N = 15 2
+M N = 15 3
+M N = 15 4
+M N = 15 5
+M N = 15 6
+M N = 15 7
+M N = 15 8
+M N = 15 9
+M N = 15 10
+M N = 15 11
+M N = 15 12
+M N = 15 13
+M N = 15 14
+M N = 15 15
+M N = 15 16
+M N = 15 17
+M N = 15 18
+M N = 15 19
+M N = 15 20
+M N = 15 21
+M N = 15 22
+M N = 15 23
+M N = 15 24
+M N = 16 0
+M N = 16 1
+M N = 16 2
+M N = 16 3
+M N = 16 4
+M N = 16 5
+M N = 16 6
+M N = 16 7
+M N = 16 8
+M N = 16 9
+M N = 16 10
+M N = 16 11
+M N = 16 12
+M N = 16 13
+M N = 16 14
+M N = 16 15
+M N = 16 16
+M N = 16 17
+M N = 16 18
+M N = 16 19
+M N = 16 20
+M N = 16 21
+M N = 16 22
+M N = 16 23
+M N = 16 24
+M N = 17 0
+M N = 17 1
+M N = 17 2
+M N = 17 3
+M N = 17 4
+M N = 17 5
+M N = 17 6
+M N = 17 7
+M N = 17 8
+M N = 17 9
+M N = 17 10
+M N = 17 11
+M N = 17 12
+M N = 17 13
+M N = 17 14
+M N = 17 15
+M N = 17 16
+M N = 17 17
+M N = 17 18
+M N = 17 19
+M N = 17 20
+M N = 17 21
+M N = 17 22
+M N = 17 23
+M N = 17 24
+M N = 18 0
+M N = 18 1
+M N = 18 2
+M N = 18 3
+M N = 18 4
+M N = 18 5
+M N = 18 6
+M N = 18 7
+M N = 18 8
+M N = 18 9
+M N = 18 10
+M N = 18 11
+M N = 18 12
+M N = 18 13
+M N = 18 14
+M N = 18 15
+M N = 18 16
+M N = 18 17
+M N = 18 18
+M N = 18 19
+M N = 18 20
+M N = 18 21
+M N = 18 22
+M N = 18 23
+M N = 18 24
+M N = 19 0
+M N = 19 1
+M N = 19 2
+M N = 19 3
+M N = 19 4
+M N = 19 5
+M N = 19 6
+M N = 19 7
+M N = 19 8
+M N = 19 9
+M N = 19 10
+M N = 19 11
+M N = 19 12
+M N = 19 13
+M N = 19 14
+M N = 19 15
+M N = 19 16
+M N = 19 17
+M N = 19 18
+M N = 19 19
+M N = 19 20
+M N = 19 21
+M N = 19 22
+M N = 19 23
+M N = 19 24
+M N = 20 0
+M N = 20 1
+M N = 20 2
+M N = 20 3
+M N = 20 4
+M N = 20 5
+M N = 20 6
+M N = 20 7
+M N = 20 8
+M N = 20 9
+M N = 20 10
+M N = 20 11
+M N = 20 12
+M N = 20 13
+M N = 20 14
+M N = 20 15
+M N = 20 16
+M N = 20 17
+M N = 20 18
+M N = 20 19
+M N = 20 20
+M N = 20 21
+M N = 20 22
+M N = 20 23
+M N = 20 24
+M N = 21 0
+M N = 21 1
+M N = 21 2
+M N = 21 3
+M N = 21 4
+M N = 21 5
+M N = 21 6
+M N = 21 7
+M N = 21 8
+M N = 21 9
+M N = 21 10
+M N = 21 11
+M N = 21 12
+M N = 21 13
+M N = 21 14
+M N = 21 15
+M N = 21 16
+M N = 21 17
+M N = 21 18
+M N = 21 19
+M N = 21 20
+M N = 21 21
+M N = 21 22
+M N = 21 23
+M N = 21 24
+M N = 22 0
+M N = 22 1
+M N = 22 2
+M N = 22 3
+M N = 22 4
+M N = 22 5
+M N = 22 6
+M N = 22 7
+M N = 22 8
+M N = 22 9
+M N = 22 10
+M N = 22 11
+M N = 22 12
+M N = 22 13
+M N = 22 14
+M N = 22 15
+M N = 22 16
+M N = 22 17
+M N = 22 18
+M N = 22 19
+M N = 22 20
+M N = 22 21
+M N = 22 22
+M N = 22 23
+M N = 22 24
+M N = 23 0
+M N = 23 1
+M N = 23 2
+M N = 23 3
+M N = 23 4
+M N = 23 5
+M N = 23 6
+M N = 23 7
+M N = 23 8
+M N = 23 9
+M N = 23 10
+M N = 23 11
+M N = 23 12
+M N = 23 13
+M N = 23 14
+M N = 23 15
+M N = 23 16
+M N = 23 17
+M N = 23 18
+M N = 23 19
+M N = 23 20
+M N = 23 21
+M N = 23 22
+M N = 23 23
+M N = 23 24
+M N = 24 0
+M N = 24 1
+M N = 24 2
+M N = 24 3
+M N = 24 4
+M N = 24 5
+M N = 24 6
+M N = 24 7
+M N = 24 8
+M N = 24 9
+M N = 24 10
+M N = 24 11
+M N = 24 12
+M N = 24 13
+M N = 24 14
+M N = 24 15
+M N = 24 16
+M N = 24 17
+M N = 24 18
+M N = 24 19
+M N = 24 20
+M N = 24 21
+M N = 24 22
+M N = 24 23
+M N = 24 24
+After preplacing
+0: 499
+1: 3064
+2: 2606
+4: 2776
+start to get placement row information.
+successfully solve row 0, record the solution
+successfully solve row 1, record the solution
+successfully solve row 2, record the solution
+successfully solve row 3, record the solution
+successfully solve row 4, record the solution
+successfully solve row 5, record the solution
+successfully solve row 6, record the solution
+successfully solve row 7, record the solution
+successfully solve row 8, record the solution
+successfully solve row 9, record the solution
+successfully solve row 10, record the solution
+successfully solve row 11, record the solution
+successfully solve row 12, record the solution
+successfully solve row 13, record the solution
+successfully solve row 14, record the solution
+successfully solve row 15, record the solution
+successfully solve row 16, record the solution
+successfully solve row 17, record the solution
+successfully solve row 18, record the solution
+successfully solve row 19, record the solution
+successfully solve row 20, record the solution
+successfully solve row 21, record the solution
+successfully solve row 22, record the solution
+successfully solve row 23, record the solution
+successfully solve row 24, record the solution
+successfully solve row 25, record the solution
+successfully solve row 26, record the solution
+successfully solve row 27, record the solution
+successfully solve row 28, record the solution
+successfully solve row 29, record the solution
+successfully solve row 30, record the solution
+successfully solve row 31, record the solution
+successfully solve row 32, record the solution
+successfully solve row 33, record the solution
+successfully solve row 34, record the solution
+successfully solve row 35, record the solution
+successfully solve row 36, record the solution
+successfully solve row 37, record the solution
+successfully solve row 38, record the solution
+successfully solve row 39, record the solution
+successfully solve row 40, record the solution
+successfully solve row 41, record the solution
+successfully solve row 42, record the solution
+successfully solve row 43, record the solution
+successfully solve row 44, record the solution
+successfully solve row 45, record the solution
+successfully solve row 46, record the solution
+successfully solve row 47, record the solution
+successfully solve row 48, record the solution
+successfully solve row 49, record the solution
+successfully solve row 50, record the solution
+successfully solve row 51, record the solution
+successfully solve row 52, record the solution
+successfully solve row 53, record the solution
+successfully solve row 54, record the solution
+successfully solve row 55, record the solution
+successfully solve row 56, record the solution
+successfully solve row 57, record the solution
+successfully solve row 58, record the solution
+successfully solve row 59, record the solution
+successfully solve row 60, record the solution
+successfully solve row 61, record the solution
+successfully solve row 62, record the solution
+successfully solve row 63, record the solution
+successfully solve row 64, record the solution
+successfully solve row 65, record the solution
+successfully solve row 66, record the solution
+successfully solve row 67, record the solution
+successfully solve row 68, record the solution
+successfully solve row 69, record the solution
+successfully solve row 70, record the solution
+successfully solve row 71, record the solution
+successfully solve row 72, record the solution
+successfully solve row 73, record the solution
+successfully solve row 74, record the solution
+successfully solve row 75, record the solution
+successfully solve row 76, record the solution
+successfully solve row 77, record the solution
+successfully solve row 78, record the solution
+successfully solve row 79, record the solution
+successfully solve row 80, record the solution
+successfully solve row 81, record the solution
+successfully solve row 82, record the solution
+successfully solve row 83, record the solution
+successfully solve row 84, record the solution
+successfully solve row 85, record the solution
+successfully solve row 86, record the solution
+successfully solve row 87, record the solution
+successfully solve row 88, record the solution
+successfully solve row 89, record the solution
+successfully solve row 90, record the solution
+successfully solve row 91, record the solution
+successfully solve row 92, record the solution
+successfully solve row 93, record the solution
+successfully solve row 94, record the solution
+successfully solve row 95, record the solution
+successfully solve row 96, record the solution
+successfully solve row 97, record the solution
+successfully solve row 98, record the solution
+successfully solve row 99, record the solution
+successfully solve row 100, record the solution
+successfully solve row 101, record the solution
+successfully solve row 102, record the solution
+successfully solve row 103, record the solution
+successfully solve row 104, record the solution
+successfully solve row 105, record the solution
+successfully solve row 106, record the solution
+successfully solve row 107, record the solution
+successfully solve row 108, record the solution
+successfully solve row 109, record the solution
+successfully solve row 110, record the solution
+successfully solve row 111, record the solution
+successfully solve row 112, record the solution
+successfully solve row 113, record the solution
+successfully solve row 114, record the solution
+successfully solve row 115, record the solution
+successfully solve row 116, record the solution
+successfully solve row 117, record the solution
+successfully solve row 118, record the solution
+successfully solve row 119, record the solution
+successfully solve row 120, record the solution
+successfully solve row 121, record the solution
+successfully solve row 122, record the solution
+successfully solve row 123, record the solution
+successfully solve row 124, record the solution
+successfully solve row 125, record the solution
+successfully solve row 126, record the solution
+successfully solve row 127, record the solution
+successfully solve row 128, record the solution
+successfully solve row 129, record the solution
+successfully solve row 130, record the solution
+successfully solve row 131, record the solution
+successfully solve row 132, record the solution
+successfully solve row 133, record the solution
+successfully solve row 134, record the solution
+successfully solve row 135, record the solution
+successfully solve row 136, record the solution
+successfully solve row 137, record the solution
+successfully solve row 138, record the solution
+successfully solve row 139, record the solution
+successfully solve row 140, record the solution
+successfully solve row 141, record the solution
+successfully solve row 142, record the solution
+successfully solve row 143, record the solution
+successfully solve row 144, record the solution
+successfully solve row 145, record the solution
+successfully solve row 146, record the solution
+successfully solve row 147, record the solution
+successfully solve row 148, record the solution
+successfully solve row 149, record the solution
+successfully solve row 150, record the solution
+successfully solve row 151, record the solution
+successfully solve row 152, record the solution
+successfully solve row 153, record the solution
+successfully solve row 154, record the solution
+successfully solve row 155, record the solution
+successfully solve row 156, record the solution
+successfully solve row 157, record the solution
+successfully solve row 158, record the solution
+successfully solve row 159, record the solution
+successfully solve row 160, record the solution
+successfully solve row 161, record the solution
+successfully solve row 162, record the solution
+successfully solve row 163, record the solution
+successfully solve row 164, record the solution
+successfully solve row 165, record the solution
+successfully solve row 166, record the solution
+successfully solve row 167, record the solution
+successfully solve row 168, record the solution
+successfully solve row 169, record the solution
+successfully solve row 170, record the solution
+successfully solve row 171, record the solution
+successfully solve row 172, record the solution
+successfully solve row 173, record the solution
+successfully solve row 174, record the solution
+successfully solve row 175, record the solution
+successfully solve row 176, record the solution
+successfully solve row 177, record the solution
+successfully solve row 178, record the solution
+successfully solve row 179, record the solution
+successfully solve row 180, record the solution
+successfully solve row 181, record the solution
+successfully solve row 182, record the solution
+successfully solve row 183, record the solution
+successfully solve row 184, record the solution
+successfully solve row 185, record the solution
+successfully solve row 186, record the solution
+successfully solve row 187, record the solution
+successfully solve row 188, record the solution
+successfully solve row 189, record the solution
+successfully solve row 190, record the solution
+successfully solve row 191, record the solution
+successfully solve row 192, record the solution
+successfully solve row 193, record the solution
+successfully solve row 194, record the solution
+successfully solve row 195, record the solution
+successfully solve row 196, record the solution
+successfully solve row 197, record the solution
+successfully solve row 198, record the solution
+successfully solve row 199, record the solution
+successfully solve row 200, record the solution
+successfully solve row 201, record the solution
+successfully solve row 202, record the solution
+successfully solve row 203, record the solution
+successfully solve row 204, record the solution
+successfully solve row 205, record the solution
+successfully solve row 206, record the solution
+successfully solve row 207, record the solution
+successfully solve row 208, record the solution
+successfully solve row 209, record the solution
+successfully solve row 210, record the solution
+successfully solve row 211, record the solution
+successfully solve row 212, record the solution
+successfully solve row 213, record the solution
+successfully solve row 214, record the solution
+successfully solve row 215, record the solution
+successfully solve row 216, record the solution
+successfully solve row 217, record the solution
+successfully solve row 218, record the solution
+successfully solve row 219, record the solution
+successfully solve row 220, record the solution
+successfully solve row 221, record the solution
+successfully solve row 222, record the solution
+successfully solve row 223, record the solution
+successfully solve row 224, record the solution
+successfully solve row 225, record the solution
+successfully solve row 226, record the solution
+successfully solve row 227, record the solution
+successfully solve row 228, record the solution
+successfully solve row 229, record the solution
+successfully solve row 230, record the solution
+successfully solve row 231, record the solution
+successfully solve row 232, record the solution
+successfully solve row 233, record the solution
+successfully solve row 234, record the solution
+successfully solve row 235, record the solution
+successfully solve row 236, record the solution
+successfully solve row 237, record the solution
+successfully solve row 238, record the solution
+successfully solve row 239, record the solution
+successfully solve row 240, record the solution
+successfully solve row 241, record the solution
+successfully solve row 242, record the solution
+successfully solve row 243, record the solution
+successfully solve row 244, record the solution
+successfully solve row 245, record the solution
+successfully solve row 246, record the solution
+successfully solve row 247, record the solution
+successfully solve row 248, record the solution
+successfully solve row 249, record the solution
+successfully solve row 250, record the solution
+successfully solve row 251, record the solution
+successfully solve row 252, record the solution
+successfully solve row 253, record the solution
+successfully solve row 254, record the solution
+successfully solve row 255, record the solution
+successfully solve row 256, record the solution
+successfully solve row 257, record the solution
+successfully solve row 258, record the solution
+successfully solve row 259, record the solution
+successfully solve row 260, record the solution
+successfully solve row 261, record the solution
+successfully solve row 262, record the solution
+successfully solve row 263, record the solution
+successfully solve row 264, record the solution
+successfully solve row 265, record the solution
+successfully solve row 266, record the solution
+successfully solve row 267, record the solution
+successfully solve row 268, record the solution
+successfully solve row 269, record the solution
+successfully solve row 270, record the solution
+successfully solve row 271, record the solution
+successfully solve row 272, record the solution
+successfully solve row 273, record the solution
+successfully solve row 274, record the solution
+successfully solve row 275, record the solution
+successfully solve row 276, record the solution
+successfully solve row 277, record the solution
+successfully solve row 278, record the solution
+successfully solve row 279, record the solution
+successfully solve row 280, record the solution
+successfully solve row 281, record the solution
+successfully solve row 282, record the solution
+successfully solve row 283, record the solution
+successfully solve row 284, record the solution
+successfully solve row 285, record the solution
+successfully solve row 286, record the solution
+successfully solve row 287, record the solution
+successfully solve row 288, record the solution
+successfully solve row 289, record the solution
+successfully solve row 290, record the solution
+successfully solve row 291, record the solution
+successfully solve row 292, record the solution
+successfully solve row 293, record the solution
+successfully solve row 294, record the solution
+successfully solve row 295, record the solution
+successfully solve row 296, record the solution
+successfully solve row 297, record the solution
+successfully solve row 298, record the solution
+successfully solve row 299, record the solution
+successfully solve row 300, record the solution
+successfully solve row 301, record the solution
+successfully solve row 302, record the solution
+successfully solve row 303, record the solution
+successfully solve row 304, record the solution
+successfully solve row 305, record the solution
+successfully solve row 306, record the solution
+successfully solve row 307, record the solution
+successfully solve row 308, record the solution
+successfully solve row 309, record the solution
+successfully solve row 310, record the solution
+successfully solve row 311, record the solution
+successfully solve row 312, record the solution
+successfully solve row 313, record the solution
+successfully solve row 314, record the solution
+successfully solve row 315, record the solution
+successfully solve row 316, record the solution
+successfully solve row 317, record the solution
+successfully solve row 318, record the solution
+successfully solve row 319, record the solution
+successfully solve row 320, record the solution
+successfully solve row 321, record the solution
+successfully solve row 322, record the solution
+successfully solve row 323, record the solution
+successfully solve row 324, record the solution
+successfully solve row 325, record the solution
+successfully solve row 326, record the solution
+successfully solve row 327, record the solution
+successfully solve row 328, record the solution
+successfully solve row 329, record the solution
+successfully solve row 330, record the solution
+successfully solve row 331, record the solution
+successfully solve row 332, record the solution
+successfully solve row 333, record the solution
+successfully solve row 334, record the solution
+successfully solve row 335, record the solution
+successfully solve row 336, record the solution
+successfully solve row 337, record the solution
+successfully solve row 338, record the solution
+successfully solve row 339, record the solution
+successfully solve row 340, record the solution
+successfully solve row 341, record the solution
+successfully solve row 342, record the solution
+successfully solve row 343, record the solution
+successfully solve row 344, record the solution
+successfully solve row 345, record the solution
+successfully solve row 346, record the solution
+successfully solve row 347, record the solution
+successfully solve row 348, record the solution
+successfully solve row 349, record the solution
+successfully solve row 350, record the solution
+successfully solve row 351, record the solution
+successfully solve row 352, record the solution
+successfully solve row 353, record the solution
+successfully solve row 354, record the solution
+successfully solve row 355, record the solution
+successfully solve row 356, record the solution
+successfully solve row 357, record the solution
+successfully solve row 358, record the solution
+successfully solve row 359, record the solution
+successfully solve row 360, record the solution
+successfully solve row 361, record the solution
+successfully solve row 362, record the solution
+successfully solve row 363, record the solution
+successfully solve row 364, record the solution
+successfully solve row 365, record the solution
+successfully solve row 366, record the solution
+successfully solve row 367, record the solution
+successfully solve row 368, record the solution
+successfully solve row 369, record the solution
+successfully solve row 370, record the solution
+successfully solve row 371, record the solution
+successfully solve row 372, record the solution
+successfully solve row 373, record the solution
+successfully solve row 374, record the solution
+successfully solve row 375, record the solution
+successfully solve row 376, record the solution
+successfully solve row 377, record the solution
+successfully solve row 378, record the solution
+successfully solve row 379, record the solution
+successfully solve row 380, record the solution
+successfully solve row 381, record the solution
+successfully solve row 382, record the solution
+successfully solve row 383, record the solution
+successfully solve row 384, record the solution
+successfully solve row 385, record the solution
+successfully solve row 386, record the solution
+successfully solve row 387, record the solution
+successfully solve row 388, record the solution
+successfully solve row 389, record the solution
+successfully solve row 390, record the solution
+successfully solve row 391, record the solution
+successfully solve row 392, record the solution
+successfully solve row 393, record the solution
+successfully solve row 394, record the solution
+successfully solve row 395, record the solution
+successfully solve row 396, record the solution
+successfully solve row 397, record the solution
+successfully solve row 398, record the solution
+successfully solve row 399, record the solution
+successfully solve row 400, record the solution
+successfully solve row 401, record the solution
+successfully solve row 402, record the solution
+successfully solve row 403, record the solution
+successfully solve row 404, record the solution
+successfully solve row 405, record the solution
+successfully solve row 406, record the solution
+successfully solve row 407, record the solution
+successfully solve row 408, record the solution
+successfully solve row 409, record the solution
+successfully solve row 410, record the solution
+successfully solve row 411, record the solution
+successfully solve row 412, record the solution
+successfully solve row 413, record the solution
+successfully solve row 414, record the solution
+successfully solve row 415, record the solution
+successfully solve row 416, record the solution
+successfully solve row 417, record the solution
+successfully solve row 418, record the solution
+successfully solve row 419, record the solution
+successfully solve row 420, record the solution
+successfully solve row 421, record the solution
+successfully solve row 422, record the solution
+successfully solve row 423, record the solution
+successfully solve row 424, record the solution
+successfully solve row 425, record the solution
+successfully solve row 426, record the solution
+successfully solve row 427, record the solution
+successfully solve row 428, record the solution
+successfully solve row 429, record the solution
+successfully solve row 430, record the solution
+successfully solve row 431, record the solution
+successfully solve row 432, record the solution
+successfully solve row 433, record the solution
+successfully solve row 434, record the solution
+successfully solve row 435, record the solution
+successfully solve row 436, record the solution
+successfully solve row 437, record the solution
+successfully solve row 438, record the solution
+successfully solve row 439, record the solution
+successfully solve row 440, record the solution
+successfully solve row 441, record the solution
+successfully solve row 442, record the solution
+successfully solve row 443, record the solution
+successfully solve row 444, record the solution
+successfully solve row 445, record the solution
+successfully solve row 446, record the solution
+successfully solve row 447, record the solution
+successfully solve row 448, record the solution
+successfully solve row 449, record the solution
+successfully solve row 450, record the solution
+successfully solve row 451, record the solution
+successfully solve row 452, record the solution
+successfully solve row 453, record the solution
+successfully solve row 454, record the solution
+successfully solve row 455, record the solution
+successfully solve row 456, record the solution
+successfully solve row 457, record the solution
+successfully solve row 458, record the solution
+successfully solve row 459, record the solution
+successfully solve row 460, record the solution
+successfully solve row 461, record the solution
+successfully solve row 462, record the solution
+successfully solve row 463, record the solution
+successfully solve row 464, record the solution
+successfully solve row 465, record the solution
+successfully solve row 466, record the solution
+successfully solve row 467, record the solution
+successfully solve row 468, record the solution
+successfully solve row 469, record the solution
+successfully solve row 470, record the solution
+successfully solve row 471, record the solution
+successfully solve row 472, record the solution
+successfully solve row 473, record the solution
+successfully solve row 474, record the solution
+successfully solve row 475, record the solution
+successfully solve row 476, record the solution
+successfully solve row 477, record the solution
+successfully solve row 478, record the solution
+successfully solve row 479, record the solution
+successfully solve row 480, record the solution
+successfully solve row 481, record the solution
+successfully solve row 482, record the solution
+successfully solve row 483, record the solution
+successfully solve row 484, record the solution
+successfully solve row 485, record the solution
+successfully solve row 486, record the solution
+successfully solve row 487, record the solution
+successfully solve row 488, record the solution
+successfully solve row 489, record the solution
+successfully solve row 490, record the solution
+successfully solve row 491, record the solution
+successfully solve row 492, record the solution
+successfully solve row 493, record the solution
+successfully solve row 494, record the solution
+successfully solve row 495, record the solution
+successfully solve row 496, record the solution
+successfully solve row 497, record the solution
+successfully solve row 498, record the solution
+successfully solve row 499, record the solution
+successfully solve row 500, record the solution
+successfully solve row 501, record the solution
+successfully solve row 502, record the solution
+successfully solve row 503, record the solution
+successfully solve row 504, record the solution
+successfully solve row 505, record the solution
+successfully solve row 506, record the solution
+successfully solve row 507, record the solution
+successfully solve row 508, record the solution
+successfully solve row 509, record the solution
+successfully solve row 510, record the solution
+successfully solve row 511, record the solution
+successfully solve row 512, record the solution
+successfully solve row 513, record the solution
+successfully solve row 514, record the solution
+successfully solve row 515, record the solution
+successfully solve row 516, record the solution
+successfully solve row 517, record the solution
+successfully solve row 518, record the solution
+successfully solve row 519, record the solution
+successfully solve row 520, record the solution
+successfully solve row 521, record the solution
+successfully solve row 522, record the solution
+successfully solve row 523, record the solution
+successfully solve row 524, record the solution
+successfully solve row 525, record the solution
+successfully solve row 526, record the solution
+successfully solve row 527, record the solution
+successfully solve row 528, record the solution
+successfully solve row 529, record the solution
+successfully solve row 530, record the solution
+successfully solve row 531, record the solution
+successfully solve row 532, record the solution
+successfully solve row 533, record the solution
+successfully solve row 534, record the solution
+successfully solve row 535, record the solution
+successfully solve row 536, record the solution
+successfully solve row 537, record the solution
+successfully solve row 538, record the solution
+successfully solve row 539, record the solution
+successfully solve row 540, record the solution
+successfully solve row 541, record the solution
+successfully solve row 542, record the solution
+successfully solve row 543, record the solution
+successfully solve row 544, record the solution
+successfully solve row 545, record the solution
+successfully solve row 546, record the solution
+successfully solve row 547, record the solution
+successfully solve row 548, record the solution
+successfully solve row 549, record the solution
+successfully solve row 550, record the solution
+successfully solve row 551, record the solution
+successfully solve row 552, record the solution
+successfully solve row 553, record the solution
+successfully solve row 554, record the solution
+successfully solve row 555, record the solution
+successfully solve row 556, record the solution
+successfully solve row 557, record the solution
+successfully solve row 558, record the solution
+successfully solve row 559, record the solution
+successfully solve row 560, record the solution
+successfully solve row 561, record the solution
+successfully solve row 562, record the solution
+successfully solve row 563, record the solution
+successfully solve row 564, record the solution
+successfully solve row 565, record the solution
+successfully solve row 566, record the solution
+successfully solve row 567, record the solution
+successfully solve row 568, record the solution
+successfully solve row 569, record the solution
+successfully solve row 570, record the solution
+successfully solve row 571, record the solution
+successfully solve row 572, record the solution
+successfully solve row 573, record the solution
+successfully solve row 574, record the solution
+successfully solve row 575, record the solution
+successfully solve row 576, record the solution
+successfully solve row 577, record the solution
+successfully solve row 578, record the solution
+successfully solve row 579, record the solution
+successfully solve row 580, record the solution
+successfully solve row 581, record the solution
+successfully solve row 582, record the solution
+successfully solve row 583, record the solution
+successfully solve row 584, record the solution
+successfully solve row 585, record the solution
+successfully solve row 586, record the solution
+successfully solve row 587, record the solution
+successfully solve row 588, record the solution
+successfully solve row 589, record the solution
+successfully solve row 590, record the solution
+successfully solve row 591, record the solution
+successfully solve row 592, record the solution
+successfully solve row 593, record the solution
+successfully solve row 594, record the solution
+successfully solve row 595, record the solution
+successfully solve row 596, record the solution
+successfully solve row 597, record the solution
+successfully solve row 598, record the solution
+successfully solve row 599, record the solution
+successfully solve row 600, record the solution
+successfully solve row 601, record the solution
+successfully solve row 602, record the solution
+successfully solve row 0, record the solution
+successfully solve row 1, record the solution
+successfully solve row 2, record the solution
+successfully solve row 3, record the solution
+successfully solve row 4, record the solution
+successfully solve row 5, record the solution
+successfully solve row 6, record the solution
+successfully solve row 7, record the solution
+successfully solve row 8, record the solution
+successfully solve row 9, record the solution
+successfully solve row 10, record the solution
+successfully solve row 11, record the solution
+successfully solve row 12, record the solution
+successfully solve row 13, record the solution
+successfully solve row 14, record the solution
+successfully solve row 15, record the solution
+successfully solve row 16, record the solution
+successfully solve row 17, record the solution
+successfully solve row 18, record the solution
+successfully solve row 19, record the solution
+successfully solve row 20, record the solution
+successfully solve row 21, record the solution
+successfully solve row 22, record the solution
+successfully solve row 23, record the solution
+successfully solve row 24, record the solution
+successfully solve row 25, record the solution
+successfully solve row 26, record the solution
+successfully solve row 27, record the solution
+successfully solve row 28, record the solution
+successfully solve row 29, record the solution
+successfully solve row 30, record the solution
+successfully solve row 31, record the solution
+successfully solve row 32, record the solution
+successfully solve row 33, record the solution
+successfully solve row 34, record the solution
+successfully solve row 35, record the solution
+successfully solve row 36, record the solution
+successfully solve row 37, record the solution
+successfully solve row 38, record the solution
+successfully solve row 39, record the solution
+successfully solve row 40, record the solution
+successfully solve row 41, record the solution
+successfully solve row 42, record the solution
+successfully solve row 43, record the solution
+successfully solve row 44, record the solution
+successfully solve row 45, record the solution
+successfully solve row 46, record the solution
+successfully solve row 47, record the solution
+successfully solve row 48, record the solution
+successfully solve row 49, record the solution
+successfully solve row 50, record the solution
+successfully solve row 51, record the solution
+successfully solve row 52, record the solution
+successfully solve row 53, record the solution
+successfully solve row 54, record the solution
+successfully solve row 55, record the solution
+successfully solve row 56, record the solution
+successfully solve row 57, record the solution
+successfully solve row 58, record the solution
+successfully solve row 59, record the solution
+successfully solve row 60, record the solution
+successfully solve row 61, record the solution
+successfully solve row 62, record the solution
+successfully solve row 63, record the solution
+successfully solve row 64, record the solution
+successfully solve row 65, record the solution
+successfully solve row 66, record the solution
+successfully solve row 67, record the solution
+successfully solve row 68, record the solution
+successfully solve row 69, record the solution
+successfully solve row 70, record the solution
+successfully solve row 71, record the solution
+successfully solve row 72, record the solution
+successfully solve row 73, record the solution
+successfully solve row 74, record the solution
+successfully solve row 75, record the solution
+successfully solve row 76, record the solution
+successfully solve row 77, record the solution
+successfully solve row 78, record the solution
+successfully solve row 79, record the solution
+successfully solve row 80, record the solution
+successfully solve row 81, record the solution
+successfully solve row 82, record the solution
+successfully solve row 83, record the solution
+successfully solve row 84, record the solution
+successfully solve row 85, record the solution
+successfully solve row 86, record the solution
+successfully solve row 87, record the solution
+successfully solve row 88, record the solution
+successfully solve row 89, record the solution
+successfully solve row 90, record the solution
+successfully solve row 91, record the solution
+successfully solve row 92, record the solution
+successfully solve row 93, record the solution
+successfully solve row 94, record the solution
+successfully solve row 95, record the solution
+successfully solve row 96, record the solution
+successfully solve row 97, record the solution
+successfully solve row 98, record the solution
+successfully solve row 99, record the solution
+successfully solve row 100, record the solution
+successfully solve row 101, record the solution
+successfully solve row 102, record the solution
+successfully solve row 103, record the solution
+successfully solve row 104, record the solution
+successfully solve row 105, record the solution
+successfully solve row 106, record the solution
+successfully solve row 107, record the solution
+successfully solve row 108, record the solution
+successfully solve row 109, record the solution
+successfully solve row 110, record the solution
+successfully solve row 111, record the solution
+successfully solve row 112, record the solution
+successfully solve row 113, record the solution
+successfully solve row 114, record the solution
+successfully solve row 115, record the solution
+successfully solve row 116, record the solution
+successfully solve row 117, record the solution
+successfully solve row 118, record the solution
+successfully solve row 119, record the solution
+successfully solve row 120, record the solution
+successfully solve row 121, record the solution
+successfully solve row 122, record the solution
+successfully solve row 123, record the solution
+successfully solve row 124, record the solution
+successfully solve row 125, record the solution
+successfully solve row 126, record the solution
+successfully solve row 127, record the solution
+successfully solve row 128, record the solution
+successfully solve row 129, record the solution
+successfully solve row 130, record the solution
+successfully solve row 131, record the solution
+successfully solve row 132, record the solution
+successfully solve row 133, record the solution
+successfully solve row 134, record the solution
+successfully solve row 135, record the solution
+successfully solve row 136, record the solution
+successfully solve row 137, record the solution
+successfully solve row 138, record the solution
+successfully solve row 139, record the solution
+successfully solve row 140, record the solution
+successfully solve row 141, record the solution
+successfully solve row 142, record the solution
+successfully solve row 143, record the solution
+successfully solve row 144, record the solution
+successfully solve row 145, record the solution
+successfully solve row 146, record the solution
+successfully solve row 147, record the solution
+successfully solve row 148, record the solution
+successfully solve row 149, record the solution
+successfully solve row 150, record the solution
+successfully solve row 151, record the solution
+successfully solve row 152, record the solution
+successfully solve row 153, record the solution
+successfully solve row 154, record the solution
+successfully solve row 155, record the solution
+successfully solve row 156, record the solution
+successfully solve row 157, record the solution
+successfully solve row 158, record the solution
+successfully solve row 159, record the solution
+successfully solve row 160, record the solution
+successfully solve row 161, record the solution
+successfully solve row 162, record the solution
+successfully solve row 163, record the solution
+successfully solve row 164, record the solution
+successfully solve row 165, record the solution
+successfully solve row 166, record the solution
+successfully solve row 167, record the solution
+successfully solve row 168, record the solution
+successfully solve row 169, record the solution
+successfully solve row 170, record the solution
+successfully solve row 171, record the solution
+successfully solve row 172, record the solution
+successfully solve row 173, record the solution
+successfully solve row 174, record the solution
+successfully solve row 175, record the solution
+successfully solve row 176, record the solution
+successfully solve row 177, record the solution
+successfully solve row 178, record the solution
+successfully solve row 179, record the solution
+successfully solve row 180, record the solution
+successfully solve row 181, record the solution
+successfully solve row 182, record the solution
+successfully solve row 183, record the solution
+successfully solve row 184, record the solution
+successfully solve row 185, record the solution
+successfully solve row 186, record the solution
+successfully solve row 187, record the solution
+successfully solve row 188, record the solution
+successfully solve row 189, record the solution
+successfully solve row 190, record the solution
+successfully solve row 191, record the solution
+successfully solve row 192, record the solution
+successfully solve row 193, record the solution
+successfully solve row 194, record the solution
+successfully solve row 195, record the solution
+successfully solve row 196, record the solution
+successfully solve row 197, record the solution
+successfully solve row 198, record the solution
+successfully solve row 199, record the solution
+successfully solve row 200, record the solution
+successfully solve row 201, record the solution
+successfully solve row 202, record the solution
+successfully solve row 203, record the solution
+successfully solve row 204, record the solution
+successfully solve row 205, record the solution
+successfully solve row 206, record the solution
+successfully solve row 207, record the solution
+successfully solve row 208, record the solution
+successfully solve row 209, record the solution
+successfully solve row 210, record the solution
+successfully solve row 211, record the solution
+successfully solve row 212, record the solution
+successfully solve row 213, record the solution
+successfully solve row 214, record the solution
+successfully solve row 215, record the solution
+successfully solve row 216, record the solution
+successfully solve row 217, record the solution
+successfully solve row 218, record the solution
+successfully solve row 219, record the solution
+successfully solve row 220, record the solution
+successfully solve row 221, record the solution
+successfully solve row 222, record the solution
+successfully solve row 223, record the solution
+successfully solve row 224, record the solution
+successfully solve row 225, record the solution
+successfully solve row 226, record the solution
+successfully solve row 227, record the solution
+successfully solve row 228, record the solution
+successfully solve row 229, record the solution
+successfully solve row 230, record the solution
+successfully solve row 231, record the solution
+successfully solve row 232, record the solution
+successfully solve row 233, record the solution
+successfully solve row 234, record the solution
+successfully solve row 235, record the solution
+successfully solve row 236, record the solution
+successfully solve row 237, record the solution
+successfully solve row 238, record the solution
+successfully solve row 239, record the solution
+successfully solve row 240, record the solution
+successfully solve row 241, record the solution
+successfully solve row 242, record the solution
+successfully solve row 243, record the solution
+successfully solve row 244, record the solution
+successfully solve row 245, record the solution
+successfully solve row 246, record the solution
+successfully solve row 247, record the solution
+successfully solve row 248, record the solution
+successfully solve row 249, record the solution
+successfully solve row 250, record the solution
+successfully solve row 251, record the solution
+successfully solve row 252, record the solution
+successfully solve row 253, record the solution
+successfully solve row 254, record the solution
+successfully solve row 255, record the solution
+successfully solve row 256, record the solution
+successfully solve row 257, record the solution
+successfully solve row 258, record the solution
+successfully solve row 259, record the solution
+successfully solve row 260, record the solution
+successfully solve row 261, record the solution
+successfully solve row 262, record the solution
+successfully solve row 263, record the solution
+successfully solve row 264, record the solution
+successfully solve row 265, record the solution
+successfully solve row 266, record the solution
+successfully solve row 267, record the solution
+successfully solve row 268, record the solution
+successfully solve row 269, record the solution
+successfully solve row 270, record the solution
+successfully solve row 271, record the solution
+successfully solve row 272, record the solution
+successfully solve row 273, record the solution
+successfully solve row 274, record the solution
+successfully solve row 275, record the solution
+successfully solve row 276, record the solution
+successfully solve row 277, record the solution
+successfully solve row 278, record the solution
+successfully solve row 279, record the solution
+successfully solve row 280, record the solution
+successfully solve row 281, record the solution
+successfully solve row 282, record the solution
+successfully solve row 283, record the solution
+successfully solve row 284, record the solution
+successfully solve row 285, record the solution
+successfully solve row 286, record the solution
+successfully solve row 287, record the solution
+successfully solve row 288, record the solution
+successfully solve row 289, record the solution
+successfully solve row 290, record the solution
+successfully solve row 291, record the solution
+successfully solve row 292, record the solution
+successfully solve row 293, record the solution
+successfully solve row 294, record the solution
+successfully solve row 295, record the solution
+successfully solve row 296, record the solution
+successfully solve row 297, record the solution
+successfully solve row 298, record the solution
+successfully solve row 299, record the solution
+successfully solve row 300, record the solution
+successfully solve row 301, record the solution
+successfully solve row 302, record the solution
+successfully solve row 303, record the solution
+successfully solve row 304, record the solution
+successfully solve row 305, record the solution
+successfully solve row 306, record the solution
+successfully solve row 307, record the solution
+successfully solve row 308, record the solution
+successfully solve row 309, record the solution
+successfully solve row 310, record the solution
+successfully solve row 311, record the solution
+successfully solve row 312, record the solution
+successfully solve row 313, record the solution
+successfully solve row 314, record the solution
+successfully solve row 315, record the solution
+successfully solve row 316, record the solution
+successfully solve row 317, record the solution
+successfully solve row 318, record the solution
+successfully solve row 319, record the solution
+successfully solve row 320, record the solution
+successfully solve row 321, record the solution
+successfully solve row 322, record the solution
+successfully solve row 323, record the solution
+successfully solve row 324, record the solution
+successfully solve row 325, record the solution
+successfully solve row 326, record the solution
+successfully solve row 327, record the solution
+successfully solve row 328, record the solution
+successfully solve row 329, record the solution
+successfully solve row 330, record the solution
+successfully solve row 331, record the solution
+successfully solve row 332, record the solution
+successfully solve row 333, record the solution
+successfully solve row 334, record the solution
+successfully solve row 335, record the solution
+successfully solve row 336, record the solution
+successfully solve row 337, record the solution
+successfully solve row 338, record the solution
+successfully solve row 339, record the solution
+successfully solve row 340, record the solution
+successfully solve row 341, record the solution
+successfully solve row 342, record the solution
+successfully solve row 343, record the solution
+successfully solve row 344, record the solution
+successfully solve row 345, record the solution
+successfully solve row 346, record the solution
+successfully solve row 347, record the solution
+successfully solve row 348, record the solution
+successfully solve row 349, record the solution
+successfully solve row 350, record the solution
+successfully solve row 351, record the solution
+successfully solve row 352, record the solution
+successfully solve row 353, record the solution
+successfully solve row 354, record the solution
+successfully solve row 355, record the solution
+successfully solve row 356, record the solution
+successfully solve row 357, record the solution
+successfully solve row 358, record the solution
+successfully solve row 359, record the solution
+successfully solve row 360, record the solution
+successfully solve row 361, record the solution
+successfully solve row 362, record the solution
+successfully solve row 363, record the solution
+successfully solve row 364, record the solution
+successfully solve row 365, record the solution
+successfully solve row 366, record the solution
+successfully solve row 367, record the solution
+successfully solve row 368, record the solution
+successfully solve row 369, record the solution
+successfully solve row 370, record the solution
+successfully solve row 371, record the solution
+successfully solve row 372, record the solution
+successfully solve row 373, record the solution
+successfully solve row 374, record the solution
+successfully solve row 375, record the solution
+successfully solve row 376, record the solution
+successfully solve row 377, record the solution
+successfully solve row 378, record the solution
+successfully solve row 379, record the solution
+successfully solve row 380, record the solution
+successfully solve row 381, record the solution
+successfully solve row 382, record the solution
+successfully solve row 383, record the solution
+successfully solve row 384, record the solution
+successfully solve row 385, record the solution
+successfully solve row 386, record the solution
+successfully solve row 387, record the solution
+successfully solve row 388, record the solution
+successfully solve row 389, record the solution
+successfully solve row 390, record the solution
+successfully solve row 391, record the solution
+successfully solve row 392, record the solution
+successfully solve row 393, record the solution
+successfully solve row 394, record the solution
+successfully solve row 395, record the solution
+successfully solve row 396, record the solution
+successfully solve row 397, record the solution
+successfully solve row 398, record the solution
+successfully solve row 399, record the solution
+successfully solve row 400, record the solution
+successfully solve row 401, record the solution
+successfully solve row 402, record the solution
+successfully solve row 403, record the solution
+successfully solve row 404, record the solution
+successfully solve row 405, record the solution
+successfully solve row 406, record the solution
+successfully solve row 407, record the solution
+successfully solve row 408, record the solution
+successfully solve row 409, record the solution
+successfully solve row 410, record the solution
+successfully solve row 411, record the solution
+successfully solve row 412, record the solution
+successfully solve row 413, record the solution
+successfully solve row 414, record the solution
+successfully solve row 415, record the solution
+successfully solve row 416, record the solution
+successfully solve row 417, record the solution
+successfully solve row 418, record the solution
+successfully solve row 419, record the solution
+successfully solve row 420, record the solution
+successfully solve row 421, record the solution
+successfully solve row 422, record the solution
+successfully solve row 423, record the solution
+successfully solve row 424, record the solution
+successfully solve row 425, record the solution
+successfully solve row 426, record the solution
+successfully solve row 427, record the solution
+successfully solve row 428, record the solution
+successfully solve row 429, record the solution
+successfully solve row 430, record the solution
+successfully solve row 431, record the solution
+successfully solve row 432, record the solution
+successfully solve row 433, record the solution
+successfully solve row 434, record the solution
+successfully solve row 435, record the solution
+successfully solve row 436, record the solution
+successfully solve row 437, record the solution
+successfully solve row 438, record the solution
+successfully solve row 439, record the solution
+successfully solve row 440, record the solution
+successfully solve row 441, record the solution
+successfully solve row 442, record the solution
+successfully solve row 443, record the solution
+successfully solve row 444, record the solution
+successfully solve row 445, record the solution
+successfully solve row 446, record the solution
+successfully solve row 447, record the solution
+successfully solve row 448, record the solution
+successfully solve row 449, record the solution
+successfully solve row 450, record the solution
+successfully solve row 451, record the solution
+successfully solve row 452, record the solution
+successfully solve row 453, record the solution
+successfully solve row 454, record the solution
+successfully solve row 455, record the solution
+successfully solve row 456, record the solution
+successfully solve row 457, record the solution
+successfully solve row 458, record the solution
+successfully solve row 459, record the solution
+successfully solve row 460, record the solution
+successfully solve row 461, record the solution
+successfully solve row 462, record the solution
+successfully solve row 463, record the solution
+successfully solve row 464, record the solution
+successfully solve row 465, record the solution
+successfully solve row 466, record the solution
+successfully solve row 467, record the solution
+successfully solve row 468, record the solution
+successfully solve row 469, record the solution
+successfully solve row 470, record the solution
+successfully solve row 471, record the solution
+successfully solve row 472, record the solution
+successfully solve row 473, record the solution
+successfully solve row 474, record the solution
+successfully solve row 475, record the solution
+successfully solve row 476, record the solution
+successfully solve row 477, record the solution
+successfully solve row 478, record the solution
+successfully solve row 479, record the solution
+successfully solve row 480, record the solution
+successfully solve row 481, record the solution
+successfully solve row 482, record the solution
+successfully solve row 483, record the solution
+successfully solve row 484, record the solution
+successfully solve row 485, record the solution
+successfully solve row 486, record the solution
+successfully solve row 487, record the solution
+successfully solve row 488, record the solution
+successfully solve row 489, record the solution
+successfully solve row 490, record the solution
+successfully solve row 491, record the solution
+successfully solve row 492, record the solution
+successfully solve row 493, record the solution
+successfully solve row 494, record the solution
+successfully solve row 495, record the solution
+successfully solve row 496, record the solution
+successfully solve row 497, record the solution
+successfully solve row 498, record the solution
+successfully solve row 499, record the solution
+successfully solve row 500, record the solution
+successfully solve row 501, record the solution
+successfully solve row 502, record the solution
+successfully solve row 503, record the solution
+successfully solve row 504, record the solution
+successfully solve row 505, record the solution
+successfully solve row 506, record the solution
+successfully solve row 507, record the solution
+successfully solve row 508, record the solution
+successfully solve row 509, record the solution
+successfully solve row 510, record the solution
+successfully solve row 511, record the solution
+successfully solve row 512, record the solution
+successfully solve row 513, record the solution
+successfully solve row 514, record the solution
+successfully solve row 515, record the solution
+successfully solve row 516, record the solution
+successfully solve row 517, record the solution
+successfully solve row 518, record the solution
+successfully solve row 519, record the solution
+successfully solve row 520, record the solution
+successfully solve row 521, record the solution
+successfully solve row 522, record the solution
+successfully solve row 523, record the solution
+successfully solve row 524, record the solution
+successfully solve row 525, record the solution
+successfully solve row 526, record the solution
+successfully solve row 527, record the solution
+successfully solve row 528, record the solution
+successfully solve row 529, record the solution
+successfully solve row 530, record the solution
+successfully solve row 531, record the solution
+successfully solve row 532, record the solution
+successfully solve row 533, record the solution
+successfully solve row 534, record the solution
+successfully solve row 535, record the solution
+successfully solve row 536, record the solution
+successfully solve row 537, record the solution
+successfully solve row 538, record the solution
+successfully solve row 539, record the solution
+successfully solve row 540, record the solution
+successfully solve row 541, record the solution
+successfully solve row 542, record the solution
+successfully solve row 543, record the solution
+successfully solve row 544, record the solution
+successfully solve row 545, record the solution
+successfully solve row 546, record the solution
+successfully solve row 547, record the solution
+successfully solve row 548, record the solution
+successfully solve row 549, record the solution
+successfully solve row 550, record the solution
+successfully solve row 551, record the solution
+successfully solve row 552, record the solution
+successfully solve row 553, record the solution
+successfully solve row 554, record the solution
+successfully solve row 555, record the solution
+successfully solve row 556, record the solution
+successfully solve row 557, record the solution
+successfully solve row 558, record the solution
+successfully solve row 559, record the solution
+successfully solve row 560, record the solution
+successfully solve row 561, record the solution
+successfully solve row 562, record the solution
+successfully solve row 563, record the solution
+successfully solve row 564, record the solution
+successfully solve row 565, record the solution
+successfully solve row 566, record the solution
+successfully solve row 567, record the solution
+successfully solve row 568, record the solution
+successfully solve row 569, record the solution
+successfully solve row 570, record the solution
+successfully solve row 571, record the solution
+successfully solve row 572, record the solution
+successfully solve row 573, record the solution
+successfully solve row 574, record the solution
+successfully solve row 575, record the solution
+successfully solve row 576, record the solution
+successfully solve row 577, record the solution
+successfully solve row 578, record the solution
+successfully solve row 579, record the solution
+successfully solve row 580, record the solution
+successfully solve row 581, record the solution
+successfully solve row 582, record the solution
+successfully solve row 583, record the solution
+successfully solve row 584, record the solution
+successfully solve row 585, record the solution
+successfully solve row 586, record the solution
+successfully solve row 587, record the solution
+successfully solve row 588, record the solution
+successfully solve row 589, record the solution
+successfully solve row 590, record the solution
+successfully solve row 591, record the solution
+successfully solve row 592, record the solution
+successfully solve row 594, record the solution
+Solver is completed !
+Time for solve: 27467662 sec
+Output successfully!
+Time for output: 20839 sec
