@@ -47,14 +47,14 @@ namespace Solver
         vector<list<size_t>> _FFinPlaceRegion; // record the id of ff in placeRegion
         list<size_t> _legalizedFFID;           // record the legalized ff id
         // catch for legalization
-        vector<vector<bool>> _availPosTable;                 // if the grid point is available, the value would be true
-        vector<vector<pair<size_t, int>>> _listWait4Legal;   // catch for the FF wait for legalize (should not be modified during the legalize)
-        vector<vector<pair<size_t, int>>> _legalist;         // double copy for _listWait4Legal, can be modified
-        vector<vector<pair<int, int>>> _finalSolution;       // catch for record the solution | pair<y index, x index>
-        vector<vector<bool>> DPtable;                        // DPtable[ i-th object in legalist ][ position ]
-        vector<int> heightConstraint;                        // record the available height for x position
-        vector<vector<vector<pair<int, int>>>> solutionList; // pair<int y, int x>
-        vector<vector<unsigned int>> totalDisplace;          // totalDisplace[# of object][last position]
+        vector<vector<bool>> _availPosTable;                       // if the grid point is available, the value would be true
+        vector<vector<vector<pair<size_t, int>>>> _listWait4Legal; // catch for the FF wait for legalize (should not be modified during the legalize)
+        vector<vector<pair<size_t, int>>> _legalist;               // double copy for _listWait4Legal, can be modified
+        vector<vector<pair<int, int>>> _finalSolution;             // catch for record the solution | pair<y index, x index>
+        vector<vector<bool>> DPtable;                              // DPtable[ i-th object in legalist ][ position ]
+        vector<int> heightConstraint;                              // record the available height for x position
+        vector<vector<vector<pair<int, int>>>> solutionList;       // pair<int y, int x>
+        vector<vector<unsigned int>> totalDisplace;                // totalDisplace[# of object][last position]
 
         // auxilury function (need to be modified)
         void initLegalizer();                                                                       // initialize the basic data structure of legalizer

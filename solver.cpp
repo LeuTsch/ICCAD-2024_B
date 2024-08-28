@@ -1494,7 +1494,7 @@ void Solver::Solver::drawpic(const string &s)
 void Solver::Solver::solve_by_window()
 {
     evaluate("init Metrix.txt");
-    drawpic("pic_init.plt");
+    // drawpic("pic_init.plt");
 
     solve_initbuild();
     // solve_findfeasible();
@@ -1675,11 +1675,11 @@ void Solver::Solver::solve_by_window()
         std::cout << pair.first << ": " << pair.second << std::endl;
     }
 
-    drawpic("pic_e.plt");
+    // drawpic("pic_e.plt");
     evaluate("before legal Metrix.txt");
     legalize();
     evaluate("after legal Metrix.txt");
-    drawpic("pic_final.plt");
+    // drawpic("pic_final.plt");
     std::cout << "Solver is completed !" << std::endl;
 }
 
