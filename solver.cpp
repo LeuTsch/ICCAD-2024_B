@@ -764,7 +764,7 @@ void Solver::Solver::solve()
     evaluate("before legal Metrix.txt");
     legalize();
     evaluate("after legal Metrix.txt");
-    drawpic("pic_final.plt"); ///////////////////////////////////////////////////////////////////
+    // drawpic("pic_final.plt"); ///////////////////////////////////////////////////////////////////
     std::cout << "Solver is completed !" << std::endl;
 }
 
@@ -1456,8 +1456,8 @@ void Solver::Solver::solve_by_window()
     double width = _ptr_Parser->_dieRx - _ptr_Parser->_dieLx;
     double height = _ptr_Parser->_dieRy - _ptr_Parser->_dieLy;
     /////////////////////////////////////////////////////////////change the parameters
-    int slice = 15;
-    double low_weight = 0.8;
+    int slice = 160;
+    double low_weight = 0.2;
     ////////////////////////////////////////////////////////////
 
     double window_w = width / slice;
