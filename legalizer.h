@@ -75,6 +75,9 @@ namespace Solver
         void categorizePlaceRegion();
         void categorizeFF();                                          // categorize FF into nearest placeRegion
         bool legalRegion(const list<size_t> &, struct PlaceRegion *); // return true if succussfully legalize
+
+        // added part for priority
+        vector<pair<int, int>> _finalPos; // pair<y index, x index>
     };
 }
 

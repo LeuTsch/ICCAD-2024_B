@@ -346,7 +346,7 @@ bool Solver::legalizer::legalRegion(const list<size_t> &_FFList, struct PlaceReg
     _listWait4Legal.clear();
     _listWait4Legal.shrink_to_fit();
     _listWait4Legal.reserve(maxBit);
-    for (size_t i = 0; i < maxBit; i++)
+    for (int i = 0; i < maxBit; i++)
     {
         vector<pair<size_t, int>> init;
         init.reserve(512);
@@ -431,7 +431,7 @@ bool Solver::legalizer::legalRegion(const list<size_t> &_FFList, struct PlaceReg
     // end test*/
 
     // std::cout << "step 3: DP from lowest row to the highest." << std::endl;
-    //   step 3: DP from lowest row to the highest
+    //    step 3: DP from lowest row to the highest
     int iterCount = 1; // use for iteration counter
     while (iterCount <= _MaxIteration)
     {
@@ -439,11 +439,15 @@ bool Solver::legalizer::legalRegion(const list<size_t> &_FFList, struct PlaceReg
         iterCount++;
         // init some info for algorithm
         int _MaxDisplacement = int(std::ceil(siteHeight / siteWidth)) * iterCount * iterCount * 5;
-        _finalSolution.clear();
-        _finalSolution.shrink_to_fit();
-        _finalSolution.reserve(numPlaceRow); // pair<y index, x index>
-        vector<vector<bool>> _ffOccupation;  // record the position occupied by ff
+        vector<vector<bool>> _ffOccupation; // record the position occupied by ff
         _ffOccupation.reserve(numPlaceRow);
+        _finalPos.clear();
+        _finalPos.reserve(_id2ffPtr.size());
+        for (size_t i = 0; i < _id2ffPtr.size(); i++) // init for _finalPos
+        {
+            pair<int, int> initPair(0, 0);
+            _finalPos.push_back(initPair);
+        }
         for (size_t i = 0; i < numPlaceRow; i++) // init for _ffOccupation
         {
             vector<bool> initVec(int(siteNum), true);
@@ -460,20 +464,29 @@ bool Solver::legalizer::legalRegion(const list<size_t> &_FFList, struct PlaceReg
             std::cout << "\n" << std::endl;
         }
         ///////////////*/
-        for (size_t i = 0; i < numPlaceRow; i++) // init _finalSolution
-        {
-            vector<pair<int, int>> initVec;
-            initVec.reserve((2 * _legalist.at(i).size()));
-            _finalSolution.push_back(initVec);
-        }
+
         // start the DP from the FF have most bit
         bool Solvable = true;
         // std::cout << "Start DP process" << std::endl;
-        for (size_t bitNum = maxBit - 1; bitNum >= 0; bitNum--)
+        for (int bitNum = maxBit - 1; bitNum >= 0; bitNum--)
         {
             _legalist.clear();
             _legalist.shrink_to_fit();
             _legalist = _listWait4Legal.at(bitNum);
+            _finalSolution.clear();
+            _finalSolution.shrink_to_fit();
+            _finalSolution.reserve(numPlaceRow);     // pair<y index, x index>
+            for (size_t i = 0; i < numPlaceRow; i++) // init _finalSolution
+            {
+                vector<pair<int, int>> initVec;
+                int numFFinRow = 0;
+                for (const auto &list : _listWait4Legal)
+                {
+                    numFFinRow += list.at(i).size();
+                }
+                initVec.reserve((2 * numFFinRow));
+                _finalSolution.push_back(initVec);
+            }
             for (size_t i = 0; i < numPlaceRow; i++)
             {
                 if (_legalist.at(i).empty())
@@ -900,7 +913,7 @@ bool Solver::legalizer::legalRegion(const list<size_t> &_FFList, struct PlaceReg
                     // std::cout << "(*it).second = " << (*it).second << std::endl;
                     _finalSolution.at(i).push_back(*it);
                     // std::cout << "K" << std::endl;
-                    //  record the space occupied by the placed ff
+                    //   record the space occupied by the placed ff
                     for (int y = 0; y < ffHeight; y++)
                     {
                         for (int x = 0; x < ffWidth; x++)
@@ -910,6 +923,21 @@ bool Solver::legalizer::legalRegion(const list<size_t> &_FFList, struct PlaceReg
                     }
                     // std::cout << "counter = " << counter << " end" << std::endl;
                     counter++;
+                }
+            }
+            if (!Solvable)
+            {
+                break;
+            }
+            else
+            {
+                for (size_t i = 0; i < numPlaceRow; i++)
+                {
+                    for (size_t j = 0; j < _legalist[i].size(); j++)
+                    {
+                        _finalPos.at(_legalist.at(i).at(j).first).first = _finalSolution.at(i).at(j).first;
+                        _finalPos.at(_legalist.at(i).at(j).first).second = _finalSolution.at(i).at(j).second;
+                    }
                 }
             }
         }
@@ -922,19 +950,17 @@ bool Solver::legalizer::legalRegion(const list<size_t> &_FFList, struct PlaceReg
         }
         else
         {
-            for (size_t i = 0; i < numPlaceRow; i++)
+            for (const auto &id : _FFList)
             {
-                for (size_t j = 0; j < _legalist[i].size(); j++)
+
+                pair<double, double> position;
+                position.second = LFy_pos + double(_finalPos.at(id).first) * siteHeight;
+                position.first = LFx_pos + double(_finalPos.at(id).second) * siteWidth;
+                // set all grouped instance's position to the result
+                vector<size_t> member = getGroupMem(_id2ffPtr.at(id));
+                for (const auto id : member)
                 {
-                    pair<double, double> position;
-                    position.second = LFy_pos + double(_finalSolution.at(i).at(j).first) * siteHeight;
-                    position.first = LFx_pos + double(_finalSolution.at(i).at(j).second) * siteWidth;
-                    // set all grouped instance's position to the result
-                    vector<size_t> member = getGroupMem(_id2ffPtr.at(_legalist.at(i).at(j).first));
-                    for (const auto id : member)
-                    {
-                        setFFPosition(_id2ffPtr.at(id), position);
-                    }
+                    setFFPosition(_id2ffPtr.at(id), position);
                 }
             }
             // std::cout << "legalization successfully. \n"
