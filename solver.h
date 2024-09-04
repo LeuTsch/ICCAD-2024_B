@@ -35,10 +35,11 @@ namespace Solver
         double aspectRatio;
         double QpinEffect; // the Qpindelay - the average QpinDelay of 1 bit FF
     };
-    class STAEngine;    // forward declaration
-    class legalizer;    // forward declaration
-    class evaluator;    // forward declaration
-    class GlobalPlacer; ///////////////////////////////
+    class STAEngine;       // forward declaration
+    class legalizer;       // forward declaration
+    class evaluator;       // forward declaration
+    class PositionChecker; // forward declaration
+    class GlobalPlacer;    ///////////////////////////////
 
     class Solver
     {
@@ -48,6 +49,7 @@ namespace Solver
         void setSTAEnginePtr(STAEngine *ptr) { _ptr_STAEngine = ptr; };
         void setLegalizerPtr(legalizer *ptr) { _ptr_legalizer = ptr; };
         void setEvaluatorPtr(evaluator *ptr) { _ptr_evaluator = ptr; };
+        void setPositionCheckerPtr(PositionChecker *ptr) { _ptr_PositionChecker = ptr; };
         ///////////////////////////////////////////////
         void setGlobalPlacerPtr(GlobalPlacer *ptr) { _ptr_GlobalPlacer = ptr; };
         ///////////////////////////////////////////////
@@ -73,6 +75,7 @@ namespace Solver
         friend class STAEngine;
         friend class legalizer;
         friend class evaluator;
+        friend class PositionChecker;
 
     private:
         // data part
@@ -80,6 +83,7 @@ namespace Solver
         STAEngine *_ptr_STAEngine;
         legalizer *_ptr_legalizer;
         evaluator *_ptr_evaluator;
+        PositionChecker *_ptr_PositionChecker;
         ///////////////////////////////////////
         GlobalPlacer *_ptr_GlobalPlacer;
         ///////////////////////////////////////
@@ -104,7 +108,8 @@ namespace Solver
         double _avgQpinDelayDiff;
 
         // function part
-        vector<size_t> prePlace(const vector<FF_D_ID> &, size_t, pair<double, double>); // return the FF_D_ID be grouped
+        vector<size_t> prePlace(const vector<FF_D_ID> &, size_t, pair<double, double>);                     // return the FF_D_ID be grouped
+        vector<size_t> prePlace(const vector<size_t> &ff_group, pair<double, double> pos, size_t fflib_ID); // return the FF_D_ID be grouped
         vector<pair<size_t, double>> getSlack2ConnectedFF(const size_t &, bool considerQpinDelay = true, double weight = 1);
         // if the the connected FF has grouped, return the 100% of remaining slack. Otherwise, it would be 50%
         void legalize();

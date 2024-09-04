@@ -8,6 +8,8 @@
 #include "STAEngine.h"
 #include "legalizer.h"
 #include "evaluator.h"
+#include "GlobalPlacer.h"
+#include "PositionChecker.h"
 
 using namespace std;
 int main(int argc, char *argv[])
@@ -29,10 +31,14 @@ int main(int argc, char *argv[])
     Solver::STAEngine STAEngine;
     Solver::legalizer legalizer;
     Solver::evaluator evaluator;
+    Solver::GlobalPlacer GlobalPlacer(&parser, &solver);
+    Solver::PositionChecker PositionChecker(&solver);
     solver.setParserPtr(&parser);
     solver.setSTAEnginePtr(&STAEngine);
     solver.setLegalizerPtr(&legalizer);
     solver.setEvaluatorPtr(&evaluator);
+    solver.setGlobalPlacerPtr(&GlobalPlacer);
+    solver.setPositionCheckerPtr(&PositionChecker);
 
     solver.initSolver();
     a = clock();
