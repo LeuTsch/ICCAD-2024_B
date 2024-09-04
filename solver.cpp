@@ -17,6 +17,7 @@
 #include "legalizer.h"
 #include "GlobalPlacer.h"
 #include "evaluator.h"
+#include "PositionChecker.h"
 
 using std::list;
 using std::pair;
