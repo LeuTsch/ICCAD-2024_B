@@ -186,6 +186,7 @@ vector<pair<double, double>> Solver::PositionChecker::findAvaiablePosition(size_
             }
         }
     }
+    return output;
 }
 
 void Solver::PositionChecker::initPositionChecker()
