@@ -139,7 +139,7 @@ vector<pair<double, double>> Solver::PositionChecker::findAvaiablePosition(size_
                 heightConstraint.push_back(numPlaceRow - y);
             }
             // update the heightConstraint for  this placement row
-            for (int k = x_start; k <= int(x_end - x_start); k++)
+            for (int k = 0; k <= int(x_end - x_start); k++)
             {
                 // std::cout << "k = " << k << std::endl;
                 for (int j = y; j < y_end + libHeight; j++)
@@ -151,7 +151,7 @@ vector<pair<double, double>> Solver::PositionChecker::findAvaiablePosition(size_
                     }
                     else
                     {
-                        heightConstraint.at(k - x_start) = j - y;
+                        heightConstraint.at(k) = j - y;
                         break;
                     }
                 }
