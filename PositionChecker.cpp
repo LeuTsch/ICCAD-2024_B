@@ -145,7 +145,7 @@ vector<pair<double, double>> Solver::PositionChecker::findAvaiablePosition(size_
                 for (int j = y; j < y_end + libHeight; j++)
                 {
                     // std::cout << "j = " << j << std::endl;
-                    if (_availPosTable.at(regionIndex).at(j).at(k))
+                    if (_availPosTable.at(regionIndex).at(j).at(k + x_start))
                     {
                         continue;
                     }
