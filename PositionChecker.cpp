@@ -133,13 +133,13 @@ vector<pair<double, double>> Solver::PositionChecker::findAvaiablePosition(size_
         {
             heightConstraint.clear();
             heightConstraint.shrink_to_fit();
-            heightConstraint.reserve(x_end - x_start + 1);
-            for (int g = 0; g < int(x_end - x_start + 1); g++)
+            heightConstraint.reserve(x_end - x_start + libWidth + 1);
+            for (int g = 0; g < int(x_end - x_start + libWidth + 1); g++)
             {
                 heightConstraint.push_back(numPlaceRow - y);
             }
             // update the heightConstraint for  this placement row
-            for (int k = 0; k <= int(x_end - x_start); k++)
+            for (int k = 0; k <= int(x_end - x_start + libWidth); k++)
             {
                 // std::cout << "k = " << k << std::endl;
                 for (int j = y; j < y_end + libHeight; j++)
